@@ -1,12 +1,13 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\VendedorController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\InventoryController;
 
 // Público
 Route::get('/', fn () => redirect()->route('catalogo.index'));
@@ -42,19 +43,36 @@ Route::middleware(['auth', 'role:gerente,admin'])->group(function () {
     Route::post('/panel/vendedores', [VendedorController::class, 'store'])->name('vendedores.store');
     Route::delete('/panel/vendedores/{user}', [VendedorController::class, 'destroy'])->name('vendedores.destroy');
     Route::patch('/panel/vendedores/{user}/toggle', [VendedorController::class, 'toggle'])->name('vendedores.toggle');
-
-    // Secciones (vistas)
-    Route::view('/panel/reportes', 'panel.reportes')->name('reportes.index');
-    Route::view('/panel/ia', 'panel.ia')->name('ia.index');
 });
 
-// Config (solo admin)
-Route::middleware(['auth', 'role:admin'])->group(function () {
+// Módulos del gerente y admin
+Route::middleware(['auth', 'role:admin,gerente'])->group(function () {
+    Route::view('/panel/reportes', 'panel.reportes')->name('reportes.index');
+    Route::view('/panel/ia', 'panel.ia')->name('ia.index');
     Route::view('/panel/config', 'panel.config')->name('config.index');
 });
 
+// Módulo crítico solo admin
+Route::middleware(['auth', 'role:admin'])->group(function () {
+    Route::view('/panel/config-critica', 'panel.config-critica')->name('config.critical');
+});
+
+Route::middleware(['auth', 'role:admin,gerente'])->group(function () {
+
+    // Productos (CRUD básico)
+    Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+    Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
+    Route::post('/products', [ProductController::class, 'store'])->name('products.store');
+    Route::get('/products/{product}/edit', [ProductController::class, 'edit'])->name('products.edit');
+    Route::put('/products/{product}', [ProductController::class, 'update'])->name('products.update');
+
+    // Entrada de mercancía (inventario)
+    Route::post('/inventory/entry', [InventoryController::class, 'entry'])->name('inventory.entry');
+});
+
+// (Ya movido arriba)
+
 // Temporal / accesos internos (si ya los usas)
 Route::middleware('auth')->group(function () {
-    Route::view('/products', 'products.index')->name('products.index');
     Route::view('/sales', 'sales.index')->name('sales.index');
 });

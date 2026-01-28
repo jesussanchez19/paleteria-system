@@ -111,8 +111,8 @@
             </div>
         </a>
 
-        {{-- Config (solo admin) --}}
-        @if(auth()->user()->role === 'admin')
+        {{-- Configuración (admin y gerente) --}}
+        @if(auth()->user()->role === 'admin' || auth()->user()->role === 'gerente')
         <a href="{{ route('config.index') }}"
            class="group bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition">
             <div class="flex items-start justify-between">
@@ -124,6 +124,23 @@
             </div>
             <div class="mt-4 text-sm font-bold text-slate-700 group-hover:text-amber-700">
                 Ajustes →
+            </div>
+        </a>
+        @endif
+
+        {{-- Config Crítica (solo admin) --}}
+        @if(auth()->user()->role === 'admin')
+        <a href="{{ route('config.critical') }}"
+           class="group bg-white border border-amber-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition">
+            <div class="flex items-start justify-between">
+                <div>
+                    <h2 class="text-lg font-extrabold group-hover:text-amber-700">Config Crítica</h2>
+                    <p class="text-sm text-slate-600">Acciones delicadas del sistema.</p>
+                </div>
+                <span class="text-2xl">🔒</span>
+            </div>
+            <div class="mt-4 text-sm font-bold text-slate-700 group-hover:text-amber-700">
+                Crítico →
             </div>
         </a>
         @endif

@@ -264,6 +264,43 @@
             return;
         }
 
+        // Primero, mostrar mensaje de entrega
+        alert('Entrega la mercancía y recibe el dinero');
+
+        // Solicitar la cantidad de dinero recibida
+        let receivedAmount = null;
+        let totalAmount = null;
+        let validInput = false;
+
+        // Obtener el total antes de enviar la venta
+        const t = totals();
+        totalAmount = t.total;
+
+        while (!validInput) {
+            const input = prompt(`Total a pagar: $${totalAmount}\n\nIngresa la cantidad de dinero que recibiste:`);
+            if (input === null) {
+                // Cancelado
+                return;
+            }
+            receivedAmount = parseFloat(input);
+            if (isNaN(receivedAmount)) {
+                alert('Cantidad inválida');
+            } else if (receivedAmount < totalAmount) {
+                alert(`Falta dinero. Falta: $${(totalAmount - receivedAmount).toFixed(2)}`);
+            } else {
+                validInput = true;
+            }
+        }
+
+        // Mensaje de cambio o pago exacto
+        if (receivedAmount === totalAmount) {
+            alert('Pago exacto');
+        } else {
+            const change = (receivedAmount - totalAmount).toFixed(2);
+            alert(`Cambio a dar: $${change}`);
+        }
+
+        // Ahora sí, registrar la venta
         const items = [];
         for (const item of cart.values()) {
             items.push({ id: item.id, qty: item.qty });
@@ -286,38 +323,7 @@
             return res.json();
         })
         .then(data => {
-            alert(`Entrega la mercancía y recibe el dinero`);
-            
-            // Solicitar la cantidad de dinero recibida
-            const moneyReceived = prompt(`Total a pagar: $${data.total}\n\nIngresa la cantidad de dinero que recibiste:`);
-            
-            if (moneyReceived === null) {
-                // El usuario canceló el prompt
-                return;
-            }
-            
-            const receivedAmount = parseFloat(moneyReceived);
-            const totalAmount = parseFloat(data.total);
-            
-            if (isNaN(receivedAmount)) {
-                alert('Cantidad inválida');
-                return;
-            }
-            
-            if (receivedAmount < totalAmount) {
-                alert(`Falta dinero. Falta: $${(totalAmount - receivedAmount).toFixed(2)}`);
-                return;
-            }
-            
-            if (receivedAmount === totalAmount) {
-                alert('Pago exacto');
-            } else {
-                const change = (receivedAmount - totalAmount).toFixed(2);
-                alert(`Cambio a dar: $${change}`);
-            }
-            
             alert(`Venta realizada. Total: $${data.total}`);
-            // Recargar la página para que el stock se actualice desde el servidor
             window.location.reload();
         })
         .catch(err => {
