@@ -1,16 +1,31 @@
 <?php
 
 namespace App\Http\Controllers;
-
+use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleDetail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class SaleController extends Controller
 {
+    public function show(Sale $sale)
+    {
+        $sale->load('details.product');
+        $qr = QrCode::size(150)->generate(route('ticket.show', $sale));
+        return view('tickets.show', compact('sale', 'qr'));
+    }
+
+    public function pdf(Sale $sale)
+    {
+        $sale->load('details.product');
+        $qr = QrCode::size(120)->generate(route('ticket.show', $sale));
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('tickets.pdf', compact('sale', 'qr'));
+        return $pdf->download("ticket_{$sale->id}.pdf");
+    }
     public function store(Request $request)
     {
         // ...existing code...

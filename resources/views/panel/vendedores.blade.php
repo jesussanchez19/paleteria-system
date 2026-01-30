@@ -134,6 +134,13 @@
                                                 </label>
                                             </form>
 
+                                            {{-- Editar --}}
+                                            <a href="{{ route('vendedores.edit', $v->id) }}"
+                                               class="px-4 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-extrabold transition"
+                                               style="text-decoration:none;">
+                                                Editar
+                                            </a>
+
                                             {{-- Eliminar --}}
                                             <form method="POST" action="{{ route('vendedores.destroy', $v->id) }}"
                                                 onsubmit="return confirm('¿Eliminar vendedor: {{ $v->name }}?');">

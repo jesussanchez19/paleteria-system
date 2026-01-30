@@ -9,6 +9,33 @@ use Illuminate\Support\Facades\Auth;
 
 class VendedorController extends Controller
 {
+    public function edit(User $user)
+    {
+        if ($user->role !== 'vendedor') {
+            return back()->with('error', 'Solo se pueden editar vendedores.');
+        }
+        return view('panel.vendedores-edit', compact('user'));
+    }
+
+    public function update(Request $request, User $user)
+    {
+        if ($user->role !== 'vendedor') {
+            return back()->with('error', 'Solo se pueden actualizar vendedores.');
+        }
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'email' => ['required', 'email', 'max:180', 'unique:users,email,' . $user->id],
+            'password' => ['nullable', 'string', 'min:6'],
+        ]);
+        $user->name = $data['name'];
+        $user->email = $data['email'];
+        if (!empty($data['password'])) {
+              $user->password = \Illuminate\Support\Facades\Hash::make($data['password']);
+        }
+        $user->save();
+        return redirect()->route('vendedores.index')->with('success', 'Vendedor actualizado correctamente.');
+    }
+
     public function index()
     {
         $vendedores = User::where('role', 'vendedor')
