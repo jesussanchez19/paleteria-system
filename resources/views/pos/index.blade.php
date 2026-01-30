@@ -301,10 +301,10 @@
         }
 
         // Ahora sí, registrar la venta
-        const items = [];
-        for (const item of cart.values()) {
-            items.push({ id: item.id, qty: item.qty });
-        }
+        const items = Array.from(cart.values()).map(i => ({
+            product_id: i.id,
+            qty: i.qty
+        }));
 
         fetch("{{ route('pos.checkout') }}", {
             method: 'POST',
