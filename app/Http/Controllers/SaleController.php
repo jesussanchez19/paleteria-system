@@ -2,58 +2,121 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleDetail;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class SaleController extends Controller
 {
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'items' => 'required|array|min:1',
-            'items.*.id' => 'required|exists:products,id',
-            'items.*.qty' => 'required|integer|min:1',
-        ]);
+        // ...existing code...
+        // Permitir items_json desde el formulario oculto
+        if ($request->filled('items_json') && !$request->filled('items')) {
+            $decoded = json_decode($request->input('items_json'), true);
+            $request->merge(['items' => is_array($decoded) ? $decoded : []]);
+        }
 
-        return DB::transaction(function () use ($data) {
+        try {
+            $data = $request->validate([
+                'items' => ['required', 'array', 'min:1'],
+                'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
+                'items.*.qty' => ['required', 'integer', 'min:1'],
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            if ($request->expectsJson() || $request->isJson() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Datos inválidos',
+                    'errors' => $e->errors(),
+                ], 422);
+            }
+            throw $e;
+        }
 
+        $items = $data['items'];
+
+        // Traer productos involucrados en una sola consulta
+        $productIds = collect($items)->pluck('product_id')->unique()->values();
+        $products = Product::whereIn('id', $productIds)->get()->keyBy('id');
+
+        // Validación extra: evitar duplicados del mismo product_id en items
+        // (si mandas duplicados, sumamos qty)
+        $normalized = collect($items)
+            ->groupBy('product_id')
+            ->map(function ($rows, $pid) {
+                return [
+                    'product_id' => (int)$pid,
+                    'qty' => (int)collect($rows)->sum('qty'),
+                ];
+            })
+            ->values();
+
+        DB::beginTransaction();
+
+        try {
             $total = 0;
 
-            $sale = Sale::create([
-                'total' => 0, // se actualiza al final
-            ]);
+            // Crear venta
+                $sale = Sale::create([
+                    'user_id' => Auth::check() ? Auth::id() : null,
+                    'total' => 0,
+                    'sold_at' => now(),
+                ]);
 
-            foreach ($data['items'] as $item) {
-                $product = Product::lockForUpdate()->find($item['id']);
-
-                if ($product->stock < $item['qty']) {
-                    abort(400, 'Stock insuficiente para ' . $product->name);
+            // Crear detalles y descontar stock
+            foreach ($normalized as $row) {
+                $p = $products->get($row['product_id']);
+                if (!$p) {
+                    throw new \Exception('Producto no encontrado.');
                 }
 
-                $subtotal = $product->price * $item['qty'];
+                $qty = (int)$row['qty'];
+                $price = (float)$p->price;
+                $subtotal = $qty * $price;
                 $total += $subtotal;
 
                 SaleDetail::create([
-                    'sale_id'   => $sale->id,
-                    'product_id'=> $product->id,
-                    'quantity'  => $item['qty'],
-                    'price'     => $product->price,
-                    'subtotal'  => $subtotal,
+                    'sale_id' => $sale->id,
+                    'product_id' => $p->id,
+                    'qty' => $qty,
+                    'price_unit' => $price,
+                    'subtotal' => $subtotal,
                 ]);
 
-                $product->decrement('stock', $item['qty']);
+                // Descontar stock
+                $p->stock = max(0, $p->stock - $qty);
+                $p->save();
             }
 
+            // Actualizar total final
             $sale->update(['total' => $total]);
 
-            return response()->json([
-                'message' => 'Venta registrada correctamente',
-                'sale_id' => $sale->id,
-                'total'   => $total
-            ]);
-        });
+            DB::commit();
+
+            // Limpieza del carrito en frontend: lo haremos desde JS
+            if ($request->expectsJson() || $request->isJson() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'total' => $total,
+                    'message' => 'Venta realizada correctamente'
+                ]);
+            }
+            return back()->with('success', 'Venta registrada. Total: $' . number_format($total, 2));
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            if ($request->expectsJson() || $request->isJson() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se pudo registrar la venta: ' . $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ], 500);
+            }
+            return back()->with('error', 'No se pudo registrar la venta: ' . $e->getMessage());
+        }
     }
 }
