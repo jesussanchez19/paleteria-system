@@ -5,17 +5,19 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
-    public function up(): void
+    public function up()
     {
         Schema::table('sale_details', function (Blueprint $table) {
-            $table->decimal('subtotal', 10, 2)->after('price');
+            if (Schema::hasColumn('sale_details', 'quantity')) {
+                $table->dropColumn('quantity');
+            }
         });
     }
 
-    public function down(): void
+    public function down()
     {
         Schema::table('sale_details', function (Blueprint $table) {
-            $table->dropColumn('subtotal');
+            $table->integer('quantity')->nullable();
         });
     }
 };
