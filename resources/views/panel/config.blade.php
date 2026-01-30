@@ -8,8 +8,9 @@
       <h1 class="text-2xl sm:text-3xl font-extrabold">Configuración ⚙️</h1>
       <p class="text-slate-600">Placeholder: UI operativa (sin guardar todavía).</p>
     </div>
-    <a href="{{ route('panel.index') }}" class="px-4 py-2 rounded-xl bg-white border border-slate-200 font-bold hover:bg-slate-50 transition">
-      ← Panel
+    <a href="{{ route('panel.index') }}" class="px-6 py-3 rounded-xl bg-pink-500 text-white font-bold hover:bg-pink-600 transition text-lg">
+      ← Volver
+    </a>
     </a>
   </div>
 

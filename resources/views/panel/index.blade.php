@@ -18,18 +18,8 @@
         </div>
 
         <div class="flex items-center gap-2">
-            <a href="{{ route('catalogo.index') }}"
-               class="px-4 py-2 rounded-xl bg-white border border-slate-200 font-bold text-slate-800 hover:bg-slate-50 transition">
-                Ver catálogo
-            </a>
 
-            <form method="POST" action="{{ route('logout') }}">
-                @csrf
-                <button type="submit"
-                        class="px-4 py-2 rounded-xl bg-slate-900 text-white font-extrabold hover:bg-slate-800 transition">
-                    Cerrar sesión
-                </button>
-            </form>
+
         </div>
     </div>
 
