@@ -41,6 +41,8 @@ Route::middleware(['auth', 'role:gerente,admin'])->group(function () {
     // Vendedores
     Route::get('/panel/vendedores', [VendedorController::class, 'index'])->name('vendedores.index');
     Route::post('/panel/vendedores', [VendedorController::class, 'store'])->name('vendedores.store');
+    Route::get('/panel/vendedores/{user}/edit', [VendedorController::class, 'edit'])->name('vendedores.edit');
+    Route::put('/panel/vendedores/{user}', [VendedorController::class, 'update'])->name('vendedores.update');
     Route::delete('/panel/vendedores/{user}', [VendedorController::class, 'destroy'])->name('vendedores.destroy');
     Route::patch('/panel/vendedores/{user}/toggle', [VendedorController::class, 'toggle'])->name('vendedores.toggle');
 });
@@ -73,6 +75,16 @@ Route::middleware(['auth', 'role:admin,gerente'])->group(function () {
 // (Ya movido arriba)
 
 // Temporal / accesos internos (si ya los usas)
+
 Route::middleware('auth')->group(function () {
     Route::view('/sales', 'sales.index')->name('sales.index');
 });
+
+
+// PDF del ticket (solo gerente/admin)
+Route::get('/ticket/{sale}/pdf', [\App\Http\Controllers\SaleController::class, 'pdf'])
+    ->middleware(['auth', 'role:admin,gerente'])
+    ->name('ticket.pdf');
+
+// Ticket público para QR (debe ir al final)
+Route::get('/ticket/{sale}', [\App\Http\Controllers\SaleController::class, 'show'])->name('ticket.show');
