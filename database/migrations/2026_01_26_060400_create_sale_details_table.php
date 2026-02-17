@@ -12,7 +12,8 @@ return new class extends Migration {
             $table->unsignedBigInteger('sale_id');
             $table->unsignedBigInteger('product_id');
             $table->integer('quantity');
-            $table->decimal('subtotal', 10, 2)->default(0);
+            $table->decimal('price', 10, 2);
+            // El campo subtotal será agregado por la migración siguiente
             $table->timestamps();
 
             $table->foreign('sale_id')->references('id')->on('sales')->onDelete('cascade');
