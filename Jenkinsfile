@@ -10,7 +10,7 @@ pipeline {
     }
 
     stages {
-        stage('Check Tools') {
+        stage('Initialize') {
             steps {
                 sh 'php -v'
                 sh 'composer --version'
@@ -47,17 +47,11 @@ pipeline {
     }
 
     post {
-        always {
-            script {
-                try {
-                    deleteDir()
-                } catch (Exception e) {
-                    echo "Could not clean workspace: ${e.message}"
-                }
-            }
+        success {
+            echo 'Build and tests passed successfully!'
         }
         failure {
-            echo 'The pipeline failed. Check the logs above for the specific command that returned exit code 127.'
+            echo 'The pipeline failed. Ensure PHP, Composer, and NPM are installed on the Jenkins server.'
         }
     }
 }
