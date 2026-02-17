@@ -12,7 +12,10 @@ return new class extends Migration
             if (!Schema::hasColumn('products', 'category')) {
                 $table->string('category')->nullable();
             }
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
             if (!Schema::hasColumn('products', 'is_active')) {
                 $table->boolean('is_active')->default(true);
             }

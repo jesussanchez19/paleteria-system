@@ -1,0 +1,62 @@
+<?php
+
+use App\Models\Product;
+use App\Models\User;
+use App\Models\Sale;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
+
+test('full sales flow: user can checkout and stock is deducted', function () {
+    // 1. Setup Data
+    $user = User::factory()->create(['role' => 'vendedor']);
+    $product = Product::factory()->create([
+        'stock' => 10,
+        'price' => 50,
+        'is_active' => true
+    ]);
+
+    // 2. Simulate Auth
+    $this->actingAs($user);
+
+    // 3. Perform Action (Checkout)
+    $response = $this->post(route('pos.checkout'), [
+        'items' => [
+            [
+                'id' => $product->id,
+                'quantity' => 2,
+                'price' => 50 // Frontend sends price usually
+            ]
+        ],
+        'total' => 100,
+        'payment_method' => 'cash'
+    ]);
+
+    // 4. Assertions
+
+    // Check Redirect or Success Response
+    $response->assertSessionHasNoErrors();
+    $response->assertRedirect(); // Or assertStatus(200) depending on controller return
+
+    // Check Database (Sale Created)
+    $this->assertDatabaseHas('sales', [
+        'user_id' => $user->id,
+        'total' => 100,
+        'payment_method' => 'cash'
+    ]);
+
+    // Check Database (Sale Detail Created)
+    $sale = Sale::latest()->first();
+    $this->assertDatabaseHas('sale_details', [
+        'sale_id' => $sale->id,
+        'product_id' => $product->id,
+        'quantity' => 2,
+        'price' => 50
+    ]);
+
+    // Critical Business Logic: Stock Deducted
+    $this->assertDatabaseHas('products', [
+        'id' => $product->id,
+        'stock' => 8 // 10 - 2 = 8
+    ]);
+});

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Sale extends Model
 {
+<<<<<<< Updated upstream
     protected $fillable = [
         'user_id',
         'total',
@@ -28,4 +29,7 @@ class Sale extends Model
     {
         return $this->belongsTo(User::class);
     }
+=======
+    protected $fillable = ['user_id', 'total', 'payment_method'];
+>>>>>>> Stashed changes
 }
