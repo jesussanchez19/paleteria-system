@@ -12,7 +12,9 @@ return new class extends Migration {
     {
         Schema::create('sales', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id')->nullable()->constrained()->onDelete('set null');
             $table->decimal('total', 10, 2);
+            $table->timestamp('sold_at')->useCurrent();
             $table->timestamps();
         });
     }

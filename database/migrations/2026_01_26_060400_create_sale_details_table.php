@@ -9,15 +9,12 @@ return new class extends Migration {
     {
         Schema::create('sale_details', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('sale_id');
-            $table->unsignedBigInteger('product_id');
-            $table->integer('quantity');
-            $table->decimal('price', 10, 2);
-            // El campo subtotal será agregado por la migración siguiente
+            $table->foreignId('sale_id')->constrained()->onDelete('cascade');
+            $table->foreignId('product_id')->constrained();
+            $table->integer('qty');
+            $table->decimal('price_unit', 10, 2);
+            $table->decimal('subtotal', 10, 2);
             $table->timestamps();
-
-            $table->foreign('sale_id')->references('id')->on('sales')->onDelete('cascade');
-            $table->foreign('product_id')->references('id')->on('products')->onDelete('cascade');
         });
     }
 
