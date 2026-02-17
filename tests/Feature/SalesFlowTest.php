@@ -23,12 +23,11 @@ test('full sales flow: user can checkout and stock is deducted', function () {
     $response = $this->post(route('pos.checkout'), [
         'items' => [
             [
-                'id' => $product->id,
-                'quantity' => 2,
-                'price' => 50
+                'product_id' => $product->id,
+                'qty' => 2,
             ]
         ],
-        'total' => 100
+        'total' => 100,
     ]);
 
     // 4. Assertions
@@ -47,7 +46,8 @@ test('full sales flow: user can checkout and stock is deducted', function () {
     $this->assertDatabaseHas('sale_details', [
         'sale_id' => $sale->id,
         'product_id' => $product->id,
-        'quantity' => 2
+        'qty' => 2,
+        'price_unit' => $product->price
     ]);
 
     // Critical Business Logic: Stock Deducted
