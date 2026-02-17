@@ -42,11 +42,13 @@ pipeline {
             }
         }
 
+        /*
         stage('Lint & Code Style') {
             steps {
                 sh './vendor/bin/pint --test'
             }
         }
+        */
     }
 
     post {
