@@ -1,26 +1,26 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CatalogController;
+use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\PosController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\VendedorController;
-use App\Http\Controllers\ProductController;
-use App\Http\Controllers\InventoryController;
 
 // Público
-Route::get('/', fn () => redirect()->route('catalogo.index'));
+Route::get('/', fn() => redirect()->route('catalogo.index'));
 
 Route::get('/catalogo', [CatalogController::class, 'index'])
     ->name('catalogo.index');
 
 // Auth (Breeze)
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';
 
 // Básico autenticado (Breeze)
 Route::middleware('auth')->group(function () {
-    Route::get('/dashboard', fn () => view('dashboard'))
+    Route::get('/dashboard', fn() => view('dashboard'))
         ->name('dashboard');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -36,7 +36,7 @@ Route::middleware(['auth', 'role:vendedor,gerente,admin'])->group(function () {
 
 // Panel (solo gerente/admin)
 Route::middleware(['auth', 'role:gerente,admin'])->group(function () {
-    Route::get('/panel', fn () => view('panel.index'))->name('panel.index');
+    Route::get('/panel', fn() => view('panel.index'))->name('panel.index');
 
     // Vendedores
     Route::get('/panel/vendedores', [VendedorController::class, 'index'])->name('vendedores.index');

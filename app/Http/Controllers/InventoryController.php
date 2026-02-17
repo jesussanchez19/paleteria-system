@@ -11,7 +11,7 @@ class InventoryController extends Controller
     {
         $data = $request->validate([
             'product_id' => ['required', 'exists:products,id'],
-            'quantity'   => ['required', 'integer', 'min:1'],
+            'quantity' => ['required', 'integer', 'min:1'],
         ]);
 
         $product = Product::findOrFail($data['product_id']);
