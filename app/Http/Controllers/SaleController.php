@@ -26,6 +26,7 @@ class SaleController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('tickets.pdf', compact('sale', 'qr'));
         return $pdf->download("ticket_{$sale->id}.pdf");
     }
+
     public function store(Request $request)
     {
         // ...existing code...

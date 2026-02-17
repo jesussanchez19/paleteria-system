@@ -25,7 +25,7 @@ test('full sales flow: user can checkout and stock is deducted', function () {
             [
                 'product_id' => $product->id,
                 'qty' => 2,
-            ]
+            ],
         ],
         'total' => 100,
     ]);

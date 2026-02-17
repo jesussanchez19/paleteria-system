@@ -79,8 +79,6 @@ Route::middleware(['auth', 'role:admin,gerente'])->group(function () {
 Route::middleware('auth')->group(function () {
     Route::view('/sales', 'sales.index')->name('sales.index');
 });
-
-
 // PDF del ticket (solo gerente/admin)
 Route::get('/ticket/{sale}/pdf', [\App\Http\Controllers\SaleController::class, 'pdf'])
     ->middleware(['auth', 'role:admin,gerente'])

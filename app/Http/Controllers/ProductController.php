@@ -10,13 +10,11 @@ class ProductController extends Controller
     public function index()
     {
         $products = Product::orderBy('id', 'desc')->get();
-
         return view('products.index', compact('products'));
     }
 
     public function create()
     {
-
         return view('products.create');
     }
 
@@ -33,14 +31,11 @@ class ProductController extends Controller
         $data['is_active'] = $request->boolean('is_active');
 
         Product::create($data);
-
-
         return redirect()->route('products.index')->with('success', 'Producto creado correctamente.');
     }
 
     public function edit(Product $product)
     {
-
         return view('products.edit', compact('product'));
     }
 
@@ -56,8 +51,6 @@ class ProductController extends Controller
         $data['is_active'] = $request->boolean('is_active');
 
         $product->update($data);
-
-
         return redirect()->route('products.index')->with('success', 'Producto actualizado.');
     }
 }
