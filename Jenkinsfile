@@ -10,6 +10,14 @@ pipeline {
     }
 
     stages {
+        stage('Check Tools') {
+            steps {
+                sh 'php -v'
+                sh 'composer --version'
+                sh 'npm -v'
+            }
+        }
+
         stage('Install Dependencies') {
             steps {
                 sh 'composer install --no-interaction --prefer-dist --optimize-autoloader'
@@ -40,10 +48,16 @@ pipeline {
 
     post {
         always {
-            cleanWs()
+            script {
+                try {
+                    deleteDir()
+                } catch (Exception e) {
+                    echo "Could not clean workspace: ${e.message}"
+                }
+            }
         }
         failure {
-            echo 'The pipeline failed. Check the logs for more details.'
+            echo 'The pipeline failed. Check the logs above for the specific command that returned exit code 127.'
         }
     }
 }
