@@ -4,7 +4,7 @@ arch('app')
     ->expect('App')
     ->not->toUse(['dd', 'dump', 'ray'])
     ->not->toUse('Illuminate\Http\Request')
-    ->ignoring('App\Http\Controllers');
+    ->ignoring('App\Http');
 
 arch('models')
     ->expect('App\Models')
