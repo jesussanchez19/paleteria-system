@@ -8,6 +8,8 @@ use App\Http\Controllers\SaleController;
 use App\Http\Controllers\VendedorController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\DailyReportController;
+use App\Http\Controllers\DashboardStatsController;
 
 // Público
 Route::get('/', fn () => redirect()->route('catalogo.index'));
@@ -20,13 +22,26 @@ require __DIR__.'/auth.php';
 
 // Básico autenticado (Breeze)
 Route::middleware('auth')->group(function () {
-    Route::get('/dashboard', fn () => view('dashboard'))
-        ->name('dashboard');
-
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
+
+// Redirección post-login según rol
+Route::get('/redirect-after-login', function () {
+    /** @var \App\Models\User|null $user */
+    $user = \Illuminate\Support\Facades\Auth::user();
+    if (!$user) {
+        return redirect()->route('login');
+    }
+    if ($user->isVendedor()) {
+        return redirect()->route('pos.index');
+    }
+    if ($user->isGerente() || $user->isAdmin()) {
+        return redirect()->route('panel.index');
+    }
+    return redirect('/');
+})->middleware('auth')->name('redirect.after.login');
 
 // POS (vendedor, gerente, admin)
 Route::middleware(['auth', 'role:vendedor,gerente,admin'])->group(function () {
@@ -49,10 +64,20 @@ Route::middleware(['auth', 'role:gerente,admin'])->group(function () {
 
 // Módulos del gerente y admin
 Route::middleware(['auth', 'role:admin,gerente'])->group(function () {
-    Route::view('/panel/reportes', 'panel.reportes')->name('reportes.index');
+    Route::get('/panel/reportes', [\App\Http\Controllers\DashboardStatsController::class, 'index'])->name('reportes.index');
     Route::view('/panel/ia', 'panel.ia')->name('ia.index');
     Route::view('/panel/config', 'panel.config')->name('config.index');
+
+        // Gráficas del reporte
+        Route::get('/reportes/graficas', [DashboardStatsController::class, 'index'])
+            ->middleware(['auth', 'role:admin,gerente'])
+            ->name('reportes.graficas');
+
+    // Reporte diario
+    Route::get('/reporte-diario', [DailyReportController::class, 'show'])->name('reporte.diario');
+    Route::get('/reporte-diario/pdf', [DailyReportController::class, 'pdf'])->name('reporte.diario.pdf');
 });
+
 
 // Módulo crítico solo admin
 Route::middleware(['auth', 'role:admin'])->group(function () {

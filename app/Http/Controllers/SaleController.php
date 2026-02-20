@@ -117,6 +117,7 @@ class SaleController extends Controller
                 return response()->json([
                     'success' => true,
                     'total' => $total,
+                    'sale_id' => $sale->id,
                     'message' => 'Venta realizada correctamente'
                 ]);
             }
