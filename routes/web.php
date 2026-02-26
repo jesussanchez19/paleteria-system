@@ -10,6 +10,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\DailyReportController;
 use App\Http\Controllers\DashboardStatsController;
+use App\Http\Controllers\WeatherController;
 
 // Público
 Route::get('/', fn () => redirect()->route('catalogo.index'));
@@ -43,11 +44,6 @@ Route::get('/redirect-after-login', function () {
     return redirect('/');
 })->middleware('auth')->name('redirect.after.login');
 
-// POS (vendedor, gerente, admin)
-Route::middleware(['auth', 'role:vendedor,gerente,admin'])->group(function () {
-    Route::get('/pos', [PosController::class, 'index'])->name('pos.index');
-    Route::post('/pos/checkout', [SaleController::class, 'store'])->name('pos.checkout');
-});
 
 // Panel (solo gerente/admin)
 Route::middleware(['auth', 'role:gerente,admin'])->group(function () {
@@ -78,12 +74,11 @@ Route::middleware(['auth', 'role:admin,gerente'])->group(function () {
     Route::get('/reporte-diario/pdf', [DailyReportController::class, 'pdf'])->name('reporte.diario.pdf');
 });
 
+//ruta de la api clima y recomendacion
+Route::get('/analisis/{lat}/{lon}', [WeatherController::class, 'analyze']);
 
-// Módulo crítico solo admin
-Route::middleware(['auth', 'role:admin'])->group(function () {
-    Route::view('/panel/config-critica', 'panel.config-critica')->name('config.critical');
-});
 
+//crud de productos e inventario (solo gerente/admin)
 Route::middleware(['auth', 'role:admin,gerente'])->group(function () {
 
     // Productos (CRUD básico)
@@ -100,16 +95,27 @@ Route::middleware(['auth', 'role:admin,gerente'])->group(function () {
 // (Ya movido arriba)
 
 // Temporal / accesos internos (si ya los usas)
-
 Route::middleware('auth')->group(function () {
     Route::view('/sales', 'sales.index')->name('sales.index');
 });
 
 
+// Ticket público para QR (debe ir al final)
+Route::get('/ticket/{sale}', [\App\Http\Controllers\SaleController::class, 'show'])->name('ticket.show');
+
+//// FUNCIONES DE ADMINISTRACIÓN DE USUARIOS (solo admin)
+// Módulo crítico solo admin
+Route::middleware(['auth', 'role:admin'])->group(function () {
+    Route::view('/panel/config-critica', 'panel.config-critica')->name('config.critical');
+});
+
+// POS (vendedor, gerente, admin)
+Route::middleware(['auth', 'role:vendedor,gerente,admin'])->group(function () {
+    Route::get('/pos', [PosController::class, 'index'])->name('pos.index');
+    Route::post('/pos/checkout', [SaleController::class, 'store'])->name('pos.checkout');
+});
+
 // PDF del ticket (solo gerente/admin)
 Route::get('/ticket/{sale}/pdf', [\App\Http\Controllers\SaleController::class, 'pdf'])
     ->middleware(['auth', 'role:admin,gerente'])
     ->name('ticket.pdf');
-
-// Ticket público para QR (debe ir al final)
-Route::get('/ticket/{sale}', [\App\Http\Controllers\SaleController::class, 'show'])->name('ticket.show');
