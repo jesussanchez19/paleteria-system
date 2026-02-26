@@ -14,16 +14,9 @@
             <div class="flex items-center gap-2">
                 <a href="{{ route('panel.index') }}"
                     class="px-4 py-2 rounded-xl bg-white border border-slate-200 font-bold text-slate-800 hover:bg-slate-50 transition">
-                    ← Volver al panel
+                    ← Volver
                 </a>
 
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <button type="submit"
-                        class="px-4 py-2 rounded-xl bg-slate-900 text-white font-extrabold hover:bg-slate-800 transition">
-                        Cerrar sesión
-                    </button>
-                </form>
             </div>
         </div>
 
@@ -133,6 +126,13 @@
                                                     </span>
                                                 </label>
                                             </form>
+
+                                            {{-- Editar --}}
+                                            <a href="{{ route('vendedores.edit', $v->id) }}"
+                                               class="px-4 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-extrabold transition"
+                                               style="text-decoration:none;">
+                                                Editar
+                                            </a>
 
                                             {{-- Eliminar --}}
                                             <form method="POST" action="{{ route('vendedores.destroy', $v->id) }}"

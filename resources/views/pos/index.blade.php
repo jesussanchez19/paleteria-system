@@ -12,20 +12,14 @@
             <p class="text-slate-600">Selecciona productos para agregar al carrito.</p>
         </div>
 
+        @if(!auth()->user()->isVendedor())
         <div class="flex items-center gap-2">
-            <a href="{{ route('dashboard') }}"
+            <a href="{{ route('panel.index') }}"
                class="px-4 py-2 rounded-xl bg-white border border-slate-200 font-bold text-slate-800 hover:bg-slate-50 transition">
                 ← Volver
             </a>
-
-            <form method="POST" action="{{ route('logout') }}">
-                @csrf
-                <button type="submit"
-                        class="px-4 py-2 rounded-xl bg-slate-900 text-white font-extrabold hover:bg-slate-800 transition">
-                    Cerrar sesión
-                </button>
-            </form>
         </div>
+        @endif
     </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -97,6 +91,7 @@
             >
                 Cobrar
             </button>
+            <div id="ticket-link-div" class="mt-6 flex justify-center"></div>
         </div>
     </aside>
 </div>
@@ -196,8 +191,10 @@
             empty.className = 'text-sm text-slate-600';
             empty.textContent = 'Aún no agregas productos.';
             container.appendChild(empty);
-            document.getElementById('btn-cobrar').disabled = true;
-            document.getElementById('btn-cobrar').style.backgroundColor = '#fef3c7'; // amarillo claro (disabled)
+            const btnCobrar = document.getElementById('btn-cobrar');
+            btnCobrar.disabled = true;
+            btnCobrar.style.backgroundColor = '#fef3c7'; // amarillo claro (disabled)
+            btnCobrar.style.cursor = 'not-allowed';
         } else {
             for (const item of cart.values()) {
                 const row = document.createElement('div');
@@ -237,8 +234,10 @@
                 container.appendChild(row);
             }
 
-            document.getElementById('btn-cobrar').disabled = false;
-            document.getElementById('btn-cobrar').style.backgroundColor = '#fcd34d'; // amarillo activo
+            const btnCobrar = document.getElementById('btn-cobrar');
+            btnCobrar.disabled = false;
+            btnCobrar.style.backgroundColor = '#fcd34d'; // amarillo activo
+            btnCobrar.style.cursor = 'pointer';
         }
 
         const t = totals();
@@ -301,10 +300,10 @@
         }
 
         // Ahora sí, registrar la venta
-        const items = [];
-        for (const item of cart.values()) {
-            items.push({ id: item.id, qty: item.qty });
-        }
+        const items = Array.from(cart.values()).map(i => ({
+            product_id: i.id,
+            qty: i.qty
+        }));
 
         fetch("{{ route('pos.checkout') }}", {
             method: 'POST',
@@ -322,14 +321,40 @@
             }
             return res.json();
         })
-        .then(data => {
-            alert(`Venta realizada. Total: $${data.total}`);
-            window.location.reload();
-        })
+          .then(data => {
+              alert(`Venta realizada. Total: $${data.total}`);
+              // Mostrar botón para ver ticket con pago y cambio justo debajo del botón cobrar
+              const pago = receivedAmount;
+              const cambio = (receivedAmount - totalAmount).toFixed(2);
+              let ticketDiv = document.getElementById('ticket-link-div');
+              ticketDiv.innerHTML = `<a id="btn-ver-ticket" href="/ticket/${data.sale_id}?pago=${pago}&cambio=${cambio}" target="_blank" class="px-6 py-3 rounded-xl bg-emerald-500 text-white font-bold hover:bg-emerald-600 transition text-lg">Ver ticket</a>`;
+              // Ocultar el botón después de hacer clic
+              document.getElementById('btn-ver-ticket').addEventListener('click', function() {
+                  setTimeout(() => { ticketDiv.innerHTML = ''; }, 200);
+              });
+              // Actualizar stock en pantalla
+              for (const item of items) {
+                  const stockEl = document.querySelector(`button[onclick*='${item.product_id}'] .text-sm.text-slate-600 b`);
+                  if (stockEl) {
+                      let currentStock = parseInt(stockEl.textContent, 10);
+                      if (!isNaN(currentStock)) {
+                          stockEl.textContent = Math.max(0, currentStock - item.qty);
+                      }
+                  }
+              }
+              // Limpiar carrito y desactivar botón cobrar
+              cart.clear();
+              renderCart();
+              document.getElementById('btn-cobrar').disabled = true;
+          })
         .catch(err => {
             console.error('Error:', err);
             alert('Error: ' + err.message);
         });
     }
+    // Al cargar la página, asegurar que el botón de cobrar esté correctamente desactivado
+    document.addEventListener('DOMContentLoaded', function() {
+        renderCart();
+    });
 </script>
 @endsection

@@ -18,7 +18,7 @@
       </a>
       <a href="{{ route('panel.index') }}"
          class="px-4 py-2 rounded-xl bg-white border border-slate-200 font-bold hover:bg-slate-50 transition">
-        ← Panel
+        ← Volver
       </a>
     </div>
   </div>
