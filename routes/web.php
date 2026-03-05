@@ -86,6 +86,7 @@ Route::middleware(['auth', 'role:gerente'])->group(function () {
     
     // Clima
     Route::get('/panel/clima', [\App\Http\Controllers\WeatherController::class, 'index'])->name('panel.clima');
+    Route::get('/panel/clima-analisis', [\App\Http\Controllers\WeatherInsightController::class, 'index'])->name('panel.weather.insight');
     
     // Configuración operativa
     Route::get('/panel/config', [\App\Http\Controllers\SettingsController::class, 'edit'])->name('panel.config');
