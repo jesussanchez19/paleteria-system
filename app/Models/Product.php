@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Product extends Model
 {
@@ -14,6 +15,19 @@ class Product extends Model
         'price',
         'stock',
         'category',
+        'image',
+        'description',
         'is_active',
     ];
+
+    /**
+     * URL completa de la imagen
+     */
+    public function getImageUrlAttribute(): ?string
+    {
+        if ($this->image) {
+            return Storage::disk('public')->url($this->image);
+        }
+        return null;
+    }
 }

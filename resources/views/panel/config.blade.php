@@ -279,9 +279,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Si NO hay ubicación guardada, intentar obtener ubicación automática
-    const hasValidSavedLocation = savedLat && savedLng && 
-        savedLat !== defaultLat && savedLng !== defaultLng &&
-        document.getElementById('business_address').value.trim() !== '';
+    // Pero si ya existe una ciudad o dirección guardada, respetarla
+    const savedCity = document.getElementById('business_city').value.trim();
+    const savedAddress = document.getElementById('business_address').value.trim();
+    
+    const hasValidSavedLocation = (savedLat && savedLng && savedLat !== defaultLat && savedLng !== defaultLng) ||
+        savedAddress !== '' ||
+        (savedCity !== '' && savedCity !== 'Mexico City');
     
     if (!hasValidSavedLocation && navigator.geolocation) {
         // Mostrar mensaje
