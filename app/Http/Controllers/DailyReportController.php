@@ -3,14 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\Sale;
+use App\Models\CashRegister;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class DailyReportController extends Controller
 {
-    private function buildReportData(): array
+    private function buildReportData(?string $date = null): array
     {
-        $today = now()->toDateString(); // YYYY-MM-DD
+        $today = $date ?? now()->toDateString(); // YYYY-MM-DD
 
         // Ventas del día
         $sales = Sale::with('user')
@@ -31,33 +33,64 @@ class DailyReportController extends Controller
             ->orderByDesc('total')
             ->get();
 
-        $privateUrl = route('reporte.diario');
+        // Obtener caja del día
+        $cashRegister = CashRegister::whereDate('opened_at', $today)->latest()->first();
+        
+        $cashData = null;
+        if ($cashRegister) {
+            $salesDuringShift = Sale::where('created_at', '>=', $cashRegister->opened_at)
+                ->when($cashRegister->closed_at, function($q) use ($cashRegister) {
+                    return $q->where('created_at', '<=', $cashRegister->closed_at);
+                })
+                ->sum('total');
+            
+            $expectedAmount = (float)$cashRegister->opening_amount + $salesDuringShift;
+            
+            $cashData = [
+                'register' => $cashRegister,
+                'opening_amount' => (float)$cashRegister->opening_amount,
+                'sales_during_shift' => $salesDuringShift,
+                'expected_amount' => $expectedAmount,
+                'closing_amount' => $cashRegister->closing_amount,
+                'difference' => $cashRegister->difference,
+                'is_closed' => $cashRegister->closed_at !== null,
+                'has_real_amount' => $cashRegister->closing_amount !== null,
+                'opened_at' => $cashRegister->opened_at,
+                'closed_at' => $cashRegister->closed_at,
+            ];
+        }
+
+        $privateUrl = route('reporte.diario', ['date' => $today]);
         return [
             'date' => $today,
             'sales' => $sales,
             'salesCount' => $salesCount,
             'total' => $total,
             'byProduct' => $byProduct,
+            'cashData' => $cashData,
             'privateUrl' => $privateUrl,
             'qrUrl' => 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' . urlencode($privateUrl),
         ];
     }
 
-    public function show()
+    public function show(Request $request)
     {
-        $data = $this->buildReportData();
+        $date = $request->get('date', now()->toDateString());
+        $data = $this->buildReportData($date);
         return view('reportes.daily', $data);
     }
 
-    public function public()
+    public function public(Request $request)
     {
-        $data = $this->buildReportData();
+        $date = $request->get('date', now()->toDateString());
+        $data = $this->buildReportData($date);
         return view('reportes.daily_public', $data);
     }
 
-    public function pdf()
+    public function pdf(Request $request)
     {
-        $data = $this->buildReportData();
+        $date = $request->get('date', now()->toDateString());
+        $data = $this->buildReportData($date);
         // Generar QR como imagen base64
         $qrSvg = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(180)->generate($data['privateUrl']);
         $qrBase64 = 'data:image/svg+xml;base64,' . base64_encode($qrSvg);

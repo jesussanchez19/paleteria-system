@@ -30,7 +30,14 @@ class ProductController extends Controller
 
         $data['is_active'] = $request->boolean('is_active');
 
-        Product::create($data);
+        $product = Product::create($data);
+
+        audit_log('product.created', 'products', $product, [
+            'nombre' => $product->name,
+            'precio' => '$' . number_format($product->price, 2),
+            'stock' => $product->stock,
+            'categoría' => $product->category ?? 'Sin categoría',
+        ]);
 
         return redirect()->route('products.index')->with('success', 'Producto creado correctamente.');
     }
@@ -51,8 +58,32 @@ class ProductController extends Controller
 
         $data['is_active'] = $request->boolean('is_active');
 
+        // Capturar cambios antes de actualizar
+        $cambios = [];
+        if ($product->name !== $data['name']) {
+            $cambios['nombre'] = $product->name . ' → ' . $data['name'];
+        }
+        if ((float)$product->price !== (float)$data['price']) {
+            $cambios['precio'] = '$' . number_format($product->price, 2) . ' → $' . number_format($data['price'], 2);
+        }
+        if (($product->category ?? '') !== ($data['category'] ?? '')) {
+            $cambios['categoría'] = ($product->category ?? 'ninguna') . ' → ' . ($data['category'] ?? 'ninguna');
+        }
+        if ((bool)$product->is_active !== $data['is_active']) {
+            $cambios['estado'] = ($product->is_active ? 'activo' : 'inactivo') . ' → ' . ($data['is_active'] ? 'activo' : 'inactivo');
+        }
+
         $product->update($data);
 
+        audit_log('product.updated', 'products', $product, $cambios ?: ['sin cambios' => 'ninguno']);
+
         return redirect()->route('products.index')->with('success', 'Producto actualizado.');
+    }
+
+    public function destroy(Product $product)
+    {
+        $product->delete();
+
+        return redirect()->route('products.index')->with('success', 'Producto eliminado correctamente.');
     }
 }

@@ -26,6 +26,23 @@
     {{-- Cards --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
 
+        @if(auth()->user()->isGerente())
+        
+        {{-- Dashboard Inteligente --}}
+        <a href="{{ route('panel.dashboard') }}"
+           class="group bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-5 shadow-sm hover:shadow-lg transition text-white">
+            <div class="flex items-start justify-between">
+                <div>
+                    <h2 class="text-lg font-extrabold">Dashboard</h2>
+                    <p class="text-sm opacity-90">Gráficas y predicciones de ventas.</p>
+                </div>
+                <span class="text-2xl">📊</span>
+            </div>
+            <div class="mt-4 text-sm font-bold opacity-90">
+                Ver análisis →
+            </div>
+        </a>
+        
         {{-- POS --}}
         <a href="{{ route('pos.index') }}"
            class="group bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition">
@@ -56,7 +73,7 @@
             </div>
         </a>
 
-        {{-- Vendedores (solo gerente/admin, pero ya estás dentro del panel) --}}
+        {{-- Vendedores --}}
         <a href="{{ route('vendedores.index') }}"
            class="group bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition">
             <div class="flex items-start justify-between">
@@ -86,24 +103,38 @@
             </div>
         </a>
 
-        {{-- IA --}}
-        <a href="{{ route('ia.index') }}"
+        {{-- Caja --}}
+        <a href="{{ route('panel.caja.index') }}"
            class="group bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition">
             <div class="flex items-start justify-between">
                 <div>
-                    <h2 class="text-lg font-extrabold group-hover:text-violet-700">IA / Asistente</h2>
-                    <p class="text-sm text-slate-600">Preguntas sobre ventas y clima.</p>
+                    <h2 class="text-lg font-extrabold group-hover:text-amber-700">Caja</h2>
+                    <p class="text-sm text-slate-600">Cortes, turnos y diferencias.</p>
                 </div>
-                <span class="text-2xl">🤖</span>
+                <span class="text-2xl">💵</span>
             </div>
-            <div class="mt-4 text-sm font-bold text-slate-700 group-hover:text-violet-700">
-                Abrir IA →
+            <div class="mt-4 text-sm font-bold text-slate-700 group-hover:text-amber-700">
+                Ver caja →
             </div>
         </a>
 
-        {{-- Configuración (admin y gerente) --}}
-        @if(auth()->user()->role === 'admin' || auth()->user()->role === 'gerente')
-        <a href="{{ route('config.index') }}"
+        {{-- Bitácora --}}
+        <a href="{{ route('panel.bitacora') }}"
+           class="group bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition">
+            <div class="flex items-start justify-between">
+                <div>
+                    <h2 class="text-lg font-extrabold group-hover:text-slate-700">Bitácora</h2>
+                    <p class="text-sm text-slate-600">Registro de acciones del sistema.</p>
+                </div>
+                <span class="text-2xl">🧾</span>
+            </div>
+            <div class="mt-4 text-sm font-bold text-slate-700 group-hover:text-slate-900">
+                Ver bitácora →
+            </div>
+        </a>
+
+        {{-- Configuración (solo gerente) --}}
+        <a href="{{ route('panel.config') }}"
            class="group bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition">
             <div class="flex items-start justify-between">
                 <div>
@@ -114,23 +145,6 @@
             </div>
             <div class="mt-4 text-sm font-bold text-slate-700 group-hover:text-amber-700">
                 Ajustes →
-            </div>
-        </a>
-        @endif
-
-        {{-- Config Crítica (solo admin) --}}
-        @if(auth()->user()->role === 'admin')
-        <a href="{{ route('config.critical') }}"
-           class="group bg-white border border-amber-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition">
-            <div class="flex items-start justify-between">
-                <div>
-                    <h2 class="text-lg font-extrabold group-hover:text-amber-700">Config Crítica</h2>
-                    <p class="text-sm text-slate-600">Acciones delicadas del sistema.</p>
-                </div>
-                <span class="text-2xl">🔒</span>
-            </div>
-            <div class="mt-4 text-sm font-bold text-slate-700 group-hover:text-amber-700">
-                Crítico →
             </div>
         </a>
         @endif
