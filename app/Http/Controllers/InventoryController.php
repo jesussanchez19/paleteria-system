@@ -18,6 +18,12 @@ class InventoryController extends Controller
 
         $product->increment('stock', $data['quantity']);
 
+        audit_log('inventory.entry', 'inventory', $product, [
+            'producto' => $product->name,
+            'cantidad_agregada' => '+' . $data['quantity'] . ' unidades',
+            'stock_actual' => $product->fresh()->stock . ' unidades',
+        ]);
+
         return back()->with('success', "Entrada registrada. Stock de '{$product->name}' +{$data['quantity']}.");
     }
 }

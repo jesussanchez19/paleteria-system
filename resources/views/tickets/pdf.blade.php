@@ -109,7 +109,11 @@
         </tbody>
     </table>
     <div class="pdf-ticket-total">
-        Total: ${{ number_format($sale->total, 2) }}
+        Total: ${{ number_format($sale->total, 2) }}<br>
+        @if(request('pago') && request('cambio'))
+            <span>Pagó: ${{ number_format(request('pago'), 2) }}</span><br>
+            <span>Cambio: ${{ number_format(request('cambio'), 2) }}</span>
+        @endif
     </div>
     <div class="pdf-ticket-qr">
         {!! $qr !!}

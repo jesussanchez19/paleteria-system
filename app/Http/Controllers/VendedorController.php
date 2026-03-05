@@ -53,11 +53,17 @@ class VendedorController extends Controller
             'password' => ['required', 'string', 'min:6'],
         ]);
 
-        User::create([
+        $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
             'role' => 'vendedor',
+        ]);
+
+        audit_log('seller.created', 'users', $user, [
+            'nombre' => $user->name,
+            'email' => $user->email,
+            'rol' => 'vendedor',
         ]);
 
         return back()->with('success', 'Vendedor creado correctamente.');
@@ -91,6 +97,11 @@ class VendedorController extends Controller
 
         $user->is_active = !$user->is_active;
         $user->save();
+
+        audit_log('seller.toggled', 'users', $user, [
+            'vendedor' => $user->name,
+            'estado' => $user->is_active ? 'Activado' : 'Desactivado',
+        ]);
 
         return back()->with('success', 'Estado del vendedor actualizado.');
     }

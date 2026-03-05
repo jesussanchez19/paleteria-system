@@ -125,7 +125,11 @@
         </tbody>
     </table>
     <div class="ticket-total">
-        Total: ${{ number_format($sale->total, 2) }}
+        Total: ${{ number_format($sale->total, 2) }}<br>
+        @if(request('pago') && request('cambio'))
+            <span>Pagó: ${{ number_format(request('pago'), 2) }}</span><br>
+            <span>Cambio: ${{ number_format(request('cambio'), 2) }}</span>
+        @endif
     </div>
     <div class="ticket-qr">
         {!! $qr !!}
@@ -134,10 +138,19 @@
     @if(!$isPdf)
         @auth
             @if(auth()->user()->role === 'admin' || auth()->user()->role === 'gerente')
-                <div style="display: flex; justify-content: center;">
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
                     <a href="{{ route('ticket.pdf', $sale) }}" target="_blank" class="btn-pdf">Descargar PDF</a>
+                    <a href="/pos" class="btn-pdf" style="background: #64748b;">Volver</a>
+                </div>
+            @else
+                <div style="display: flex; justify-content: center; margin-top: 18px;">
+                    <a href="/pos" class="btn-pdf" style="background: #64748b;">Volver</a>
                 </div>
             @endif
+        @else
+            <div style="display: flex; justify-content: center; margin-top: 18px;">
+                <a href="/pos" class="btn-pdf" style="background: #64748b;">Volver</a>
+            </div>
         @endauth
     @endif
     <div class="ticket-footer">

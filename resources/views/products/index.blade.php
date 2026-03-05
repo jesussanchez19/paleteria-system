@@ -18,7 +18,7 @@
       </a>
       <a href="{{ route('panel.index') }}"
          class="px-4 py-2 rounded-xl bg-white border border-slate-200 font-bold hover:bg-slate-50 transition">
-        ← Panel
+        ← Volver
       </a>
     </div>
   </div>
@@ -104,11 +104,20 @@
                   </span>
                 </td>
                 <td class="py-3 pr-4">
-                  <div class="flex justify-end">
+                  <div class="flex justify-end gap-2">
                     <a href="{{ route('products.edit', $p) }}"
                        class="px-4 py-2 rounded-xl bg-white border border-slate-200 font-bold hover:bg-slate-50 transition">
                       Editar
                     </a>
+                    <form method="POST" action="{{ route('products.destroy', $p) }}"
+                          onsubmit="return confirm('¿Estás seguro de eliminar este producto?')">
+                      @csrf
+                      @method('DELETE')
+                      <button type="submit"
+                              class="px-4 py-2 rounded-xl bg-rose-600 text-white font-bold hover:bg-rose-700 transition">
+                        Eliminar
+                      </button>
+                    </form>
                   </div>
                 </td>
               </tr>
