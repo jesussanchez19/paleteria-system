@@ -133,6 +133,21 @@
             </div>
         </a>
 
+        {{-- Análisis de Clima --}}
+        <a href="{{ route('panel.weather.insight') }}"
+           class="group bg-gradient-to-br from-sky-500 to-blue-600 rounded-2xl p-5 shadow-sm hover:shadow-lg transition text-white">
+            <div class="flex items-start justify-between">
+                <div>
+                    <h2 class="text-lg font-extrabold">Análisis de Clima</h2>
+                    <p class="text-sm opacity-90">Recomendaciones basadas en temperatura.</p>
+                </div>
+                <span class="text-2xl">🌤️</span>
+            </div>
+            <div class="mt-4 text-sm font-bold opacity-90">
+                Ver análisis →
+            </div>
+        </a>
+
         {{-- Configuración (solo gerente) --}}
         <a href="{{ route('panel.config') }}"
            class="group bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition">

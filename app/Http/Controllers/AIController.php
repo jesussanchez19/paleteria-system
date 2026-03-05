@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\Models\Sale;
 use App\Models\Product;
 use App\Models\SaleDetail;
+use App\Models\WeatherSnapshot;
+use App\Services\GeminiService;
 use Illuminate\Support\Facades\DB;
 
 class AIController extends Controller
@@ -15,7 +17,7 @@ class AIController extends Controller
         return view('panel.ia');
     }
 
-    public function ask(Request $request)
+    public function ask(Request $request, GeminiService $gemini)
     {
         $request->validate([
             'question' => 'required|string|max:200'
@@ -24,7 +26,7 @@ class AIController extends Controller
         $q = strtolower($request->question);
         $q = $this->normalizeText($q);
 
-        $answer = $this->processQuestion($q);
+        $answer = $this->processQuestion($q, $request->question, $gemini);
 
         // Auditoría
         \App\Models\AuditLog::create([
@@ -62,7 +64,7 @@ class AIController extends Controller
         return strtr($text, $replacements);
     }
 
-    private function processQuestion(string $q): string
+    private function processQuestion(string $q, string $originalQuestion, GeminiService $gemini): string
     {
         // Ventas hoy
         if (str_contains($q, 'ventas hoy') || str_contains($q, 'vendido hoy')) {
@@ -134,7 +136,219 @@ class AIController extends Controller
             return $this->getAyuda();
         }
 
-        return "🤔 No entendí tu pregunta. Prueba con: 'ventas hoy', 'producto más vendido', 'inventario bajo', 'sugerencia de reposición', 'tendencias' o escribe 'ayuda' para ver todas las opciones.";
+        // Fallback: usar Gemini con contexto del negocio
+        return $this->askGemini($originalQuestion, $gemini);
+    }
+
+    private function askGemini(string $question, GeminiService $gemini): string
+    {
+        // === VENTAS ===
+        $ventasHoy = Sale::whereDate('created_at', today())->sum('total');
+        $ventasAyer = Sale::whereDate('created_at', today()->subDay())->sum('total');
+        $ventasSemana = Sale::whereBetween('created_at', [now()->startOfWeek(), now()])->sum('total');
+        $ventasSemanaAnterior = Sale::whereBetween('created_at', [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()])->sum('total');
+        $ventasMes = Sale::whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->sum('total');
+        $transaccionesHoy = Sale::whereDate('created_at', today())->count();
+        $ticketPromedio = $transaccionesHoy > 0 ? round($ventasHoy / $transaccionesHoy, 2) : 0;
+        $ticketPromedioGeneral = Sale::avg('total') ?? 0;
+
+        // Tendencia semanal
+        $tendenciaSemanal = $ventasSemanaAnterior > 0 
+            ? round((($ventasSemana - $ventasSemanaAnterior) / $ventasSemanaAnterior) * 100, 1) 
+            : 0;
+        $tendenciaTexto = $tendenciaSemanal >= 0 ? "+{$tendenciaSemanal}%" : "{$tendenciaSemanal}%";
+
+        // === TOP PRODUCTOS ===
+        $topProductos = DB::table('sale_details')
+            ->join('products', 'sale_details.product_id', '=', 'products.id')
+            ->select('products.name', DB::raw('SUM(sale_details.qty) as qty'), DB::raw('SUM(sale_details.subtotal) as total'))
+            ->groupBy('products.id', 'products.name')
+            ->orderByDesc('qty')
+            ->limit(5)
+            ->get()
+            ->map(fn($p) => "{$p->name}: {$p->qty} vendidos (\${$p->total})")
+            ->implode(', ');
+
+        // Productos menos vendidos
+        $menosVendidos = DB::table('products')
+            ->leftJoin('sale_details', 'products.id', '=', 'sale_details.product_id')
+            ->where('products.is_active', true)
+            ->select('products.name', DB::raw('COALESCE(SUM(sale_details.qty), 0) as qty'))
+            ->groupBy('products.id', 'products.name')
+            ->orderBy('qty')
+            ->limit(5)
+            ->get()
+            ->map(fn($p) => "{$p->name}: {$p->qty} vendidos")
+            ->implode(', ');
+
+        // === INVENTARIO ===
+        $productosSinStock = Product::where('stock', 0)
+            ->where('is_active', true)
+            ->pluck('name')
+            ->implode(', ');
+        $sinStockInfo = $productosSinStock ?: 'Ninguno';
+        $cantidadSinStock = Product::where('stock', 0)->where('is_active', true)->count();
+
+        $productosStockBajo = Product::where('stock', '>', 0)
+            ->where('stock', '<=', 5)
+            ->where('is_active', true)
+            ->select('name', 'stock')
+            ->get()
+            ->map(fn($p) => "{$p->name}: {$p->stock} uds")
+            ->implode(', ');
+        $stockBajoInfo = $productosStockBajo ?: 'Ninguno';
+        $cantidadStockBajo = Product::where('stock', '>', 0)->where('stock', '<=', 5)->where('is_active', true)->count();
+
+        // Inventario completo
+        $inventario = Product::where('is_active', true)
+            ->select('name', 'stock', 'price', 'category')
+            ->orderBy('stock')
+            ->get()
+            ->map(fn($p) => "{$p->name}: {$p->stock} uds, \${$p->price}, categoría: {$p->category}")
+            ->implode(' | ');
+
+        $totalProductos = Product::where('is_active', true)->count();
+        $valorInventario = Product::where('is_active', true)->selectRaw('SUM(stock * price) as total')->value('total') ?? 0;
+
+        // === CATEGORÍAS ===
+        $ventasPorCategoria = DB::table('sale_details')
+            ->join('products', 'sale_details.product_id', '=', 'products.id')
+            ->select('products.category', DB::raw('SUM(sale_details.qty) as qty'), DB::raw('SUM(sale_details.subtotal) as total'))
+            ->whereNotNull('products.category')
+            ->groupBy('products.category')
+            ->orderByDesc('total')
+            ->get()
+            ->map(fn($c) => "{$c->category}: {$c->qty} uds, \${$c->total}")
+            ->implode(', ');
+
+        // === DÍAS Y HORARIOS ===
+        $dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        $ventasPorDia = Sale::select(DB::raw('EXTRACT(DOW FROM created_at) as dia'), DB::raw('SUM(total) as total'))
+            ->where('created_at', '>=', now()->subDays(30))
+            ->groupBy('dia')
+            ->orderByDesc('total')
+            ->get()
+            ->map(fn($d) => "{$dias[(int)$d->dia]}: \${$d->total}")
+            ->implode(', ');
+
+        $mejorDia = Sale::select(DB::raw('EXTRACT(DOW FROM created_at) as dia'), DB::raw('SUM(total) as total'))
+            ->where('created_at', '>=', now()->subDays(30))
+            ->groupBy('dia')
+            ->orderByDesc('total')
+            ->first();
+        $mejorDiaTexto = $mejorDia ? $dias[(int)$mejorDia->dia] : 'Sin datos';
+
+        // === ÚLTIMAS VENTAS ===
+        $ultimasVentas = Sale::with('details.product')
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get()
+            ->map(function($s) {
+                $productos = $s->details->map(fn($d) => $d->product->name ?? 'Producto')->implode(', ');
+                return "{$s->created_at->format('H:i')}: \${$s->total} ({$productos})";
+            })
+            ->implode(' | ');
+
+        // === CLIMA ===
+        $city = app_setting('business_city', 'Mexico City');
+        $weather = WeatherSnapshot::where('date', now()->toDateString())
+            ->where('city', $city)
+            ->first();
+        $climaInfo = $weather 
+            ? "{$weather->temp}°C, {$weather->condition}" 
+            : "Sin datos";
+
+        // Recomendación por clima
+        $recomendacionClima = '';
+        if ($weather) {
+            if ($weather->temp >= 30) {
+                $recomendacionClima = 'Día muy caluroso - aumentar producción de paletas y aguas';
+            } elseif ($weather->temp >= 25) {
+                $recomendacionClima = 'Día cálido - buenas ventas de helados esperadas';
+            } elseif ($weather->temp <= 20) {
+                $recomendacionClima = 'Día fresco - posible baja en ventas de helados';
+            } else {
+                $recomendacionClima = 'Clima templado - ventas normales';
+            }
+        }
+
+        // === NEGOCIO ===
+        $nombreNegocio = app_setting('business_name', 'Paletería');
+        $fechaHoy = now()->format('l d/m/Y');
+        $horaActual = now()->format('H:i');
+
+        $context = "
+Eres el asistente IA de '{$nombreNegocio}', una paletería en México.
+Fecha: {$fechaHoy}, Hora: {$horaActual}
+Responde SIEMPRE en español, de forma directa y con datos específicos del negocio.
+
+══════════════════════════════════════
+📊 RESUMEN DE VENTAS
+══════════════════════════════════════
+• Hoy: \${$ventasHoy} MXN ({$transaccionesHoy} ventas)
+• Ayer: \${$ventasAyer} MXN
+• Esta semana: \${$ventasSemana} MXN
+• Semana anterior: \${$ventasSemanaAnterior} MXN
+• Tendencia semanal: {$tendenciaTexto}
+• Este mes: \${$ventasMes} MXN
+• Ticket promedio hoy: \${$ticketPromedio} MXN
+• Ticket promedio general: \$" . round($ticketPromedioGeneral, 2) . " MXN
+
+══════════════════════════════════════
+🏆 TOP 5 PRODUCTOS MÁS VENDIDOS
+══════════════════════════════════════
+{$topProductos}
+
+📉 PRODUCTOS MENOS VENDIDOS:
+{$menosVendidos}
+
+══════════════════════════════════════
+📦 INVENTARIO ({$totalProductos} productos activos)
+══════════════════════════════════════
+Valor total del inventario: \${$valorInventario} MXN
+
+🚨 SIN STOCK ({$cantidadSinStock}): {$sinStockInfo}
+⚠️ STOCK BAJO ({$cantidadStockBajo}): {$stockBajoInfo}
+
+Detalle: {$inventario}
+
+══════════════════════════════════════
+🏷️ VENTAS POR CATEGORÍA
+══════════════════════════════════════
+{$ventasPorCategoria}
+
+══════════════════════════════════════
+📅 VENTAS POR DÍA (últimos 30 días)
+══════════════════════════════════════
+{$ventasPorDia}
+Mejor día: {$mejorDiaTexto}
+
+══════════════════════════════════════
+🧾 ÚLTIMAS 5 VENTAS DE HOY
+══════════════════════════════════════
+{$ultimasVentas}
+
+══════════════════════════════════════
+🌤️ CLIMA EN {$city}
+══════════════════════════════════════
+Actual: {$climaInfo}
+Recomendación: {$recomendacionClima}
+
+══════════════════════════════════════
+
+PREGUNTA DEL GERENTE: {$question}
+
+Instrucciones:
+- Responde de forma clara, breve y directa
+- Usa los datos reales proporcionados arriba
+- Si preguntan qué reponer, menciona los productos sin stock y con stock bajo por nombre
+- Si preguntan sobre ventas, da cifras exactas
+- Si preguntan tendencias, compara con períodos anteriores
+- Si preguntan recomendaciones, basáte en los datos del clima y ventas
+- No inventes datos, usa solo la información proporcionada
+";
+
+        return $gemini->ask($context);
     }
 
     private function getVentasHoy(): string
@@ -173,7 +387,7 @@ class AIController extends Controller
     {
         $top = DB::table('sale_details')
             ->join('products', 'sale_details.product_id', '=', 'products.id')
-            ->select('products.name', DB::raw('SUM(sale_details.quantity) as qty'))
+            ->select('products.name', DB::raw('SUM(sale_details.qty) as qty'))
             ->groupBy('products.id', 'products.name')
             ->orderByDesc('qty')
             ->limit(5)
@@ -197,7 +411,7 @@ class AIController extends Controller
                     ->where('sale_details.created_at', '>=', now()->subDays(30));
             })
             ->where('products.is_active', true)
-            ->select('products.name', DB::raw('COALESCE(SUM(sale_details.quantity), 0) as qty'))
+            ->select('products.name', DB::raw('COALESCE(SUM(sale_details.qty), 0) as qty'))
             ->groupBy('products.id', 'products.name')
             ->orderBy('qty')
             ->limit(5)
@@ -260,7 +474,7 @@ class AIController extends Controller
             ->select(
                 'products.name',
                 'products.stock',
-                DB::raw('COALESCE(SUM(sale_details.quantity), 0) as vendidos_semana')
+                DB::raw('COALESCE(SUM(sale_details.qty), 0) as vendidos_semana')
             )
             ->groupBy('products.id', 'products.name', 'products.stock')
             ->orderByDesc('vendidos_semana')
@@ -348,7 +562,7 @@ class AIController extends Controller
     {
         $categorias = DB::table('sale_details')
             ->join('products', 'sale_details.product_id', '=', 'products.id')
-            ->select('products.category', DB::raw('SUM(sale_details.quantity) as qty'))
+            ->select('products.category', DB::raw('SUM(sale_details.qty) as qty'))
             ->whereNotNull('products.category')
             ->groupBy('products.category')
             ->orderByDesc('qty')
