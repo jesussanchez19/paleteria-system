@@ -11,12 +11,60 @@
     <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
             <h1 class="text-2xl sm:text-3xl font-extrabold">Dashboard Inteligente 📊</h1>
-            <p class="text-slate-600">Análisis de ventas y predicciones</p>
+            <p class="text-slate-600">Análisis de ventas con IA</p>
         </div>
         <a href="{{ route('panel.index') }}" class="px-4 py-2 rounded-xl bg-white border border-slate-200 font-bold hover:bg-slate-50 transition">
             ← Volver al panel
         </a>
     </div>
+
+    {{-- ============================= --}}
+    {{-- 1. RESUMEN IA DEL DÍA --}}
+    {{-- ============================= --}}
+    <div class="bg-gradient-to-br from-violet-600 to-indigo-700 rounded-2xl p-5 shadow-lg text-white">
+        <div class="flex items-start gap-4">
+            <span class="text-4xl">🤖</span>
+            <div class="flex-1">
+                <h2 class="font-extrabold text-lg mb-2">Resumen IA del día</h2>
+                <p class="text-white/90 leading-relaxed">{{ $resumenIA }}</p>
+                @if($productoEstrella)
+                <p class="mt-3 text-sm text-white/70">
+                    ⭐ Producto estrella hoy: <span class="font-bold text-white">{{ $productoEstrella->name }}</span> 
+                    ({{ $productoEstrella->qty }} vendidos)
+                </p>
+                @endif
+            </div>
+        </div>
+    </div>
+
+    {{-- ============================= --}}
+    {{-- 2. ALERTAS INTELIGENTES --}}
+    {{-- ============================= --}}
+    @if(count($alertas) > 0)
+    <div class="space-y-3">
+        @foreach($alertas as $alerta)
+        <div class="rounded-xl p-4 flex items-center gap-3 border
+            {{ $alerta['tipo'] === 'danger' ? 'bg-rose-50 border-rose-200' : '' }}
+            {{ $alerta['tipo'] === 'warning' ? 'bg-amber-50 border-amber-200' : '' }}
+            {{ $alerta['tipo'] === 'info' ? 'bg-blue-50 border-blue-200' : '' }}
+        ">
+            <span class="text-2xl">{{ $alerta['icono'] }}</span>
+            <div>
+                <p class="font-bold 
+                    {{ $alerta['tipo'] === 'danger' ? 'text-rose-800' : '' }}
+                    {{ $alerta['tipo'] === 'warning' ? 'text-amber-800' : '' }}
+                    {{ $alerta['tipo'] === 'info' ? 'text-blue-800' : '' }}
+                ">{{ $alerta['titulo'] }}</p>
+                <p class="text-sm
+                    {{ $alerta['tipo'] === 'danger' ? 'text-rose-700' : '' }}
+                    {{ $alerta['tipo'] === 'warning' ? 'text-amber-700' : '' }}
+                    {{ $alerta['tipo'] === 'info' ? 'text-blue-700' : '' }}
+                ">{{ $alerta['mensaje'] }}</p>
+            </div>
+        </div>
+        @endforeach
+    </div>
+    @endif
 
     {{-- KPIs principales --}}
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -40,23 +88,40 @@
             <p class="text-xs text-slate-400 mt-1">Hoy</p>
         </div>
         
+        {{-- 5. PREDICCIÓN CON CONTEXTO --}}
         <div class="bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl p-4 shadow-sm text-white">
             <p class="text-sm opacity-90">🔮 Predicción mañana</p>
             <p class="text-2xl font-extrabold">${{ number_format($prediction, 0) }}</p>
-            <p class="text-xs opacity-75 mt-1">Basado en tendencia</p>
+            <p class="text-xs opacity-75 mt-1">{{ $prediccionContexto }}</p>
         </div>
     </div>
 
-    {{-- Alertas rápidas --}}
-    @if($stats['productos_bajo_stock'] > 0)
-    <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
-        <span class="text-2xl">⚠️</span>
-        <div>
-            <p class="font-bold text-amber-800">{{ $stats['productos_bajo_stock'] }} productos con stock bajo</p>
-            <p class="text-sm text-amber-700">Revisa el inventario para evitar faltantes</p>
+    {{-- ============================= --}}
+    {{-- 3. RECOMENDACIONES --}}
+    {{-- ============================= --}}
+    <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+        <h2 class="font-extrabold text-slate-800 mb-4">💡 Recomendaciones</h2>
+        @if(count($recomendaciones) > 0)
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            @foreach($recomendaciones as $rec)
+            <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                <span class="text-2xl">{{ $rec['icono'] }}</span>
+                <p class="text-sm text-slate-700">{{ $rec['texto'] }}</p>
+            </div>
+            @endforeach
         </div>
+        @else
+        <p class="text-slate-500">No hay recomendaciones activas</p>
+        @endif
+        
+        @if($weather)
+        <div class="mt-4 pt-4 border-t border-slate-200">
+            <p class="text-xs text-slate-500">
+                🌡️ Clima actual: <span class="font-bold">{{ $weather->temp }}°C</span>, {{ $weather->condition }}
+            </p>
+        </div>
+        @endif
     </div>
-    @endif
 
     {{-- Gráficas principales --}}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">

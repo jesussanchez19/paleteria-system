@@ -83,10 +83,12 @@ Route::middleware(['auth', 'role:gerente'])->group(function () {
     
     // Dashboard inteligente
     Route::get('/panel/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('panel.dashboard');
+    Route::post('/panel/dashboard/ask', [\App\Http\Controllers\DashboardController::class, 'askQuick'])->name('panel.dashboard.ask');
     
     // Clima
     Route::get('/panel/clima', [\App\Http\Controllers\WeatherController::class, 'index'])->name('panel.clima');
     Route::get('/panel/clima-analisis', [\App\Http\Controllers\WeatherInsightController::class, 'index'])->name('panel.weather.insight');
+    Route::post('/panel/clima-analisis/ask', [\App\Http\Controllers\WeatherInsightController::class, 'askClima'])->name('panel.weather.ask');
     
     // Configuración operativa
     Route::get('/panel/config', [\App\Http\Controllers\SettingsController::class, 'edit'])->name('panel.config');
