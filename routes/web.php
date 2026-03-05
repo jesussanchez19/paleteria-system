@@ -1,27 +1,38 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CatalogController;
+use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\PosController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\VendedorController;
+<<<<<<< HEAD
+=======
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\DailyReportController;
 use App\Http\Controllers\DashboardStatsController;
+>>>>>>> origin/dev
 
 // Público
-Route::get('/', fn () => redirect()->route('catalogo.index'));
+Route::get('/', fn() => redirect()->route('catalogo.index'));
 
 Route::get('/catalogo', [CatalogController::class, 'index'])
     ->name('catalogo.index');
 
 // Auth (Breeze)
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';
 
 // Básico autenticado (Breeze)
 Route::middleware('auth')->group(function () {
+<<<<<<< HEAD
+    Route::get('/dashboard', fn() => view('dashboard'))
+        ->name('dashboard');
+
+=======
+>>>>>>> origin/dev
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -57,10 +68,16 @@ Route::middleware(['auth', 'role:vendedor,gerente'])->group(function () {
     Route::post('/caja/cerrar', [\App\Http\Controllers\CashRegisterController::class, 'close'])->name('caja.cerrar');
 });
 
+<<<<<<< HEAD
+// Panel (solo gerente/admin)
+Route::middleware(['auth', 'role:gerente,admin'])->group(function () {
+    Route::get('/panel', fn() => view('panel.index'))->name('panel.index');
+=======
 // Panel (solo gerente)
 Route::middleware(['auth', 'role:gerente'])->group(function () {
     Route::get('/panel', fn () => view('panel.index'))->name('panel.index');
 });
+>>>>>>> origin/dev
 
 // Vendedores (solo gerente)
 Route::middleware(['auth', 'role:gerente'])->group(function () {
@@ -157,8 +174,6 @@ Route::middleware(['auth', 'role:gerente'])->group(function () {
 Route::middleware('auth')->group(function () {
     Route::view('/sales', 'sales.index')->name('sales.index');
 });
-
-
 // PDF del ticket (solo gerente/admin)
 Route::get('/ticket/{sale}/pdf', [\App\Http\Controllers\SaleController::class, 'pdf'])
     ->middleware(['auth', 'role:admin,gerente'])

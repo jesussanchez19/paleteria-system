@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class VendedorController extends Controller
 {
@@ -30,7 +30,7 @@ class VendedorController extends Controller
         $user->name = $data['name'];
         $user->email = $data['email'];
         if (!empty($data['password'])) {
-              $user->password = \Illuminate\Support\Facades\Hash::make($data['password']);
+            $user->password = \Illuminate\Support\Facades\Hash::make($data['password']);
         }
         $user->save();
         return redirect()->route('vendedores.index')->with('success', 'Vendedor actualizado correctamente.');
@@ -95,7 +95,7 @@ class VendedorController extends Controller
             return back()->with('error', 'No puedes desactivarte a ti mismo.');
         }
 
-        $user->is_active = ! $user->is_active;
+        $user->is_active = !$user->is_active;
         $user->save();
 
         audit_log('seller.toggled', 'users', $user, [

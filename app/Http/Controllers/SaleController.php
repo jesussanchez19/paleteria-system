@@ -1,13 +1,13 @@
 <?php
 
 namespace App\Http\Controllers;
-use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleDetail;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class SaleController extends Controller
@@ -26,6 +26,7 @@ class SaleController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('tickets.pdf', compact('sale', 'qr'));
         return $pdf->download("ticket_{$sale->id}.pdf");
     }
+
     public function store(Request $request)
     {
         // ...existing code...
@@ -64,8 +65,8 @@ class SaleController extends Controller
             ->groupBy('product_id')
             ->map(function ($rows, $pid) {
                 return [
-                    'product_id' => (int)$pid,
-                    'qty' => (int)collect($rows)->sum('qty'),
+                    'product_id' => (int) $pid,
+                    'qty' => (int) collect($rows)->sum('qty'),
                 ];
             })
             ->values();
@@ -76,11 +77,11 @@ class SaleController extends Controller
             $total = 0;
 
             // Crear venta
-                $sale = Sale::create([
-                    'user_id' => Auth::check() ? Auth::id() : null,
-                    'total' => 0,
-                    'sold_at' => now(),
-                ]);
+            $sale = Sale::create([
+                'user_id' => Auth::check() ? Auth::id() : null,
+                'total' => 0,
+                'sold_at' => now(),
+            ]);
 
             // Crear detalles y descontar stock
             foreach ($normalized as $row) {
@@ -89,8 +90,8 @@ class SaleController extends Controller
                     throw new \Exception('Producto no encontrado.');
                 }
 
-                $qty = (int)$row['qty'];
-                $price = (float)$p->price;
+                $qty = (int) $row['qty'];
+                $price = (float) $p->price;
                 $subtotal = $qty * $price;
                 $total += $subtotal;
 

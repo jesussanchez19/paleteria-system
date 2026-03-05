@@ -16,4 +16,12 @@ class Product extends Model
         'category',
         'is_active',
     ];
+
+    /**
+     * Determine if the product has low stock.
+     */
+    public function isLowStock(int $threshold = 10): bool
+    {
+        return $this->stock <= $threshold;
+    }
 }

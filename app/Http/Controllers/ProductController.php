@@ -21,15 +21,18 @@ class ProductController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name'      => ['required', 'string', 'min:2'],
-            'category'  => ['nullable', 'string', 'max:50'],
-            'price'     => ['required', 'numeric', 'min:0'],
-            'stock'     => ['required', 'integer', 'min:0'],
+            'name' => ['required', 'string', 'min:2'],
+            'category' => ['nullable', 'string', 'max:50'],
+            'price' => ['required', 'numeric', 'min:0'],
+            'stock' => ['required', 'integer', 'min:0'],
             'is_active' => ['nullable'], // checkbox
         ]);
 
         $data['is_active'] = $request->boolean('is_active');
 
+<<<<<<< HEAD
+        Product::create($data);
+=======
         $product = Product::create($data);
 
         audit_log('product.created', 'products', $product, [
@@ -39,6 +42,7 @@ class ProductController extends Controller
             'categoría' => $product->category ?? 'Sin categoría',
         ]);
 
+>>>>>>> origin/dev
         return redirect()->route('products.index')->with('success', 'Producto creado correctamente.');
     }
 
@@ -50,9 +54,9 @@ class ProductController extends Controller
     public function update(Request $request, Product $product)
     {
         $data = $request->validate([
-            'name'      => ['required', 'string', 'min:2'],
-            'category'  => ['nullable', 'string', 'max:50'],
-            'price'     => ['required', 'numeric', 'min:0'],
+            'name' => ['required', 'string', 'min:2'],
+            'category' => ['nullable', 'string', 'max:50'],
+            'price' => ['required', 'numeric', 'min:0'],
             'is_active' => ['nullable'],
         ]);
 
@@ -74,9 +78,12 @@ class ProductController extends Controller
         }
 
         $product->update($data);
+<<<<<<< HEAD
+=======
 
         audit_log('product.updated', 'products', $product, $cambios ?: ['sin cambios' => 'ninguno']);
 
+>>>>>>> origin/dev
         return redirect()->route('products.index')->with('success', 'Producto actualizado.');
     }
 
