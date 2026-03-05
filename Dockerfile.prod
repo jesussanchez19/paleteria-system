@@ -1,0 +1,63 @@
+FROM node:20 as node_builder
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    php-cli \
+    php-mbstring \
+    php-xml \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+COPY package.json package-lock.json ./
+COPY composer.json composer.lock ./
+COPY resources/ ./resources/
+COPY artisan ./
+
+COPY vite.config.js ./
+
+RUN npm install
+
+RUN composer install --no-dev --prefer-dist --no-scripts
+
+RUN npm run build 
+
+FROM php:8.4.7-fpm
+
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    libpq-dev \
+    libzip-dev \
+    zip \
+    unzip \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN docker-php-ext-install pdo_pgsql mbstring exif pcntl bcmath gd zip
+
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www
+
+COPY docker/fpm/zz-docker.conf /usr/local/etc/php-fpm.d/zz-docker.conf
+
+COPY render-start.sh /usr/local/bin/render-start.sh
+RUN chmod +x /usr/local/bin/render-start.sh
+
+COPY . .
+
+COPY --from=node_builder /app/public public/
+
+RUN composer install --no-dev --prefer-dist --optimize-autoloader
+
+RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache && \
+    chmod -R 775 /var/www/storage /var/www/bootstrap/cache
+
+CMD ["/usr/local/bin/render-start.sh"]
