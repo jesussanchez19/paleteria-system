@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\CashRegister;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -40,7 +41,15 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        // Abrir caja automáticamente si es horario laboral y no hay caja abierta
+        $user = auth()->user();
+        if (in_array($user->role, ['vendedor', 'gerente']) && 
+            CashRegister::isBusinessHours() && 
+            !CashRegister::isOpenToday()) {
+            CashRegister::openForUser($user->id, 0);
+        }
+
+        return redirect()->intended(route('redirect.after.login'));
     }
 
     /**

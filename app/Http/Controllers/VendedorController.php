@@ -9,6 +9,33 @@ use Illuminate\Support\Facades\Auth;
 
 class VendedorController extends Controller
 {
+    public function edit(User $user)
+    {
+        if ($user->role !== 'vendedor') {
+            return back()->with('error', 'Solo se pueden editar vendedores.');
+        }
+        return view('panel.vendedores-edit', compact('user'));
+    }
+
+    public function update(Request $request, User $user)
+    {
+        if ($user->role !== 'vendedor') {
+            return back()->with('error', 'Solo se pueden actualizar vendedores.');
+        }
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'email' => ['required', 'email', 'max:180', 'unique:users,email,' . $user->id],
+            'password' => ['nullable', 'string', 'min:6'],
+        ]);
+        $user->name = $data['name'];
+        $user->email = $data['email'];
+        if (!empty($data['password'])) {
+              $user->password = \Illuminate\Support\Facades\Hash::make($data['password']);
+        }
+        $user->save();
+        return redirect()->route('vendedores.index')->with('success', 'Vendedor actualizado correctamente.');
+    }
+
     public function index()
     {
         $vendedores = User::where('role', 'vendedor')
@@ -26,11 +53,17 @@ class VendedorController extends Controller
             'password' => ['required', 'string', 'min:6'],
         ]);
 
-        User::create([
+        $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
             'role' => 'vendedor',
+        ]);
+
+        audit_log('seller.created', 'users', $user, [
+            'nombre' => $user->name,
+            'email' => $user->email,
+            'rol' => 'vendedor',
         ]);
 
         return back()->with('success', 'Vendedor creado correctamente.');
@@ -64,6 +97,11 @@ class VendedorController extends Controller
 
         $user->is_active = ! $user->is_active;
         $user->save();
+
+        audit_log('seller.toggled', 'users', $user, [
+            'vendedor' => $user->name,
+            'estado' => $user->is_active ? 'Activado' : 'Desactivado',
+        ]);
 
         return back()->with('success', 'Estado del vendedor actualizado.');
     }

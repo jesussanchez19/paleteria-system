@@ -12,19 +12,50 @@
             <p class="text-slate-600">Selecciona productos para agregar al carrito.</p>
         </div>
 
+        @if(!auth()->user()->isVendedor())
         <div class="flex items-center gap-2">
-            <a href="{{ route('dashboard') }}"
+            <a href="{{ route('panel.index') }}"
                class="px-4 py-2 rounded-xl bg-white border border-slate-200 font-bold text-slate-800 hover:bg-slate-50 transition">
                 ← Volver
             </a>
+        </div>
+        @endif
+    </div>
 
-            <form method="POST" action="{{ route('logout') }}">
-                @csrf
-                <button type="submit"
-                        class="px-4 py-2 rounded-xl bg-slate-900 text-white font-extrabold hover:bg-slate-800 transition">
-                    Cerrar sesión
-                </button>
-            </form>
+    {{-- Control de Caja --}}
+    <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            @if($openRegister)
+                {{-- Caja abierta --}}
+                <div class="flex items-center gap-3">
+                    <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 font-bold text-sm">
+                        <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                        Caja abierta
+                    </span>
+                    <span class="text-sm text-slate-600">
+                        Apertura: <b>${{ number_format($openRegister->opening_amount, 2) }}</b> |
+                        Ventas: <b>${{ number_format($salesDuringShift, 2) }}</b> |
+                        Esperado: <b class="text-emerald-600">${{ number_format($expectedAmount, 2) }}</b>
+                    </span>
+                </div>
+                <form method="POST" action="{{ route('caja.cerrar') }}" class="flex items-center gap-2" onsubmit="return confirm('¿Cerrar caja? Ingresa el dinero real en caja.')">
+                    @csrf
+                    <input type="number" step="0.01" name="closing_amount" placeholder="Dinero real" required
+                           class="w-32 px-3 py-2 rounded-xl border border-slate-200 text-sm">
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-rose-500 text-white font-bold hover:bg-rose-600 transition text-sm">
+                        Cerrar caja
+                    </button>
+                </form>
+            @else
+                {{-- Caja cerrada --}}
+                <div class="flex items-center gap-3">
+                    <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 text-slate-600 font-bold text-sm">
+                        <span class="w-2 h-2 bg-slate-400 rounded-full"></span>
+                        Caja cerrada
+                    </span>
+                    <span class="text-sm text-slate-500">Horario: Lunes a Domingo de 8:30am a 5:00pm</span>
+                </div>
+            @endif
         </div>
     </div>
 
@@ -97,6 +128,7 @@
             >
                 Cobrar
             </button>
+            <div id="ticket-link-div" class="mt-6 flex justify-center"></div>
         </div>
     </aside>
 </div>
@@ -196,8 +228,10 @@
             empty.className = 'text-sm text-slate-600';
             empty.textContent = 'Aún no agregas productos.';
             container.appendChild(empty);
-            document.getElementById('btn-cobrar').disabled = true;
-            document.getElementById('btn-cobrar').style.backgroundColor = '#fef3c7'; // amarillo claro (disabled)
+            const btnCobrar = document.getElementById('btn-cobrar');
+            btnCobrar.disabled = true;
+            btnCobrar.style.backgroundColor = '#fef3c7'; // amarillo claro (disabled)
+            btnCobrar.style.cursor = 'not-allowed';
         } else {
             for (const item of cart.values()) {
                 const row = document.createElement('div');
@@ -237,8 +271,10 @@
                 container.appendChild(row);
             }
 
-            document.getElementById('btn-cobrar').disabled = false;
-            document.getElementById('btn-cobrar').style.backgroundColor = '#fcd34d'; // amarillo activo
+            const btnCobrar = document.getElementById('btn-cobrar');
+            btnCobrar.disabled = false;
+            btnCobrar.style.backgroundColor = '#fcd34d'; // amarillo activo
+            btnCobrar.style.cursor = 'pointer';
         }
 
         const t = totals();
@@ -258,7 +294,15 @@
         }
     }, true);
 
+    // Estado de caja (desde PHP)
+    const cajaAbierta = {{ $openRegister ? 'true' : 'false' }};
+
     function checkout() {
+        if (!cajaAbierta) {
+            alert('Debes abrir la caja antes de poder cobrar.');
+            return;
+        }
+
         if (cart.size === 0) {
             alert('El carrito está vacío');
             return;
@@ -301,10 +345,10 @@
         }
 
         // Ahora sí, registrar la venta
-        const items = [];
-        for (const item of cart.values()) {
-            items.push({ id: item.id, qty: item.qty });
-        }
+        const items = Array.from(cart.values()).map(i => ({
+            product_id: i.id,
+            qty: i.qty
+        }));
 
         fetch("{{ route('pos.checkout') }}", {
             method: 'POST',
@@ -322,14 +366,40 @@
             }
             return res.json();
         })
-        .then(data => {
-            alert(`Venta realizada. Total: $${data.total}`);
-            window.location.reload();
-        })
+          .then(data => {
+              alert(`Venta realizada. Total: $${data.total}`);
+              // Mostrar botón para ver ticket con pago y cambio justo debajo del botón cobrar
+              const pago = receivedAmount;
+              const cambio = (receivedAmount - totalAmount).toFixed(2);
+              let ticketDiv = document.getElementById('ticket-link-div');
+              ticketDiv.innerHTML = `<a id="btn-ver-ticket" href="/ticket/${data.sale_id}?pago=${pago}&cambio=${cambio}" target="_blank" class="px-6 py-3 rounded-xl bg-emerald-500 text-white font-bold hover:bg-emerald-600 transition text-lg">Ver ticket</a>`;
+              // Ocultar el botón después de hacer clic
+              document.getElementById('btn-ver-ticket').addEventListener('click', function() {
+                  setTimeout(() => { ticketDiv.innerHTML = ''; }, 200);
+              });
+              // Actualizar stock en pantalla
+              for (const item of items) {
+                  const stockEl = document.querySelector(`button[onclick*='${item.product_id}'] .text-sm.text-slate-600 b`);
+                  if (stockEl) {
+                      let currentStock = parseInt(stockEl.textContent, 10);
+                      if (!isNaN(currentStock)) {
+                          stockEl.textContent = Math.max(0, currentStock - item.qty);
+                      }
+                  }
+              }
+              // Limpiar carrito y desactivar botón cobrar
+              cart.clear();
+              renderCart();
+              document.getElementById('btn-cobrar').disabled = true;
+          })
         .catch(err => {
             console.error('Error:', err);
             alert('Error: ' + err.message);
         });
     }
+    // Al cargar la página, asegurar que el botón de cobrar esté correctamente desactivado
+    document.addEventListener('DOMContentLoaded', function() {
+        renderCart();
+    });
 </script>
 @endsection

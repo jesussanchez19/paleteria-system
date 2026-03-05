@@ -46,4 +46,15 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    // Métodos para verificar roles
+    public function isVendedor() { return $this->role === 'vendedor'; }
+    public function isGerente() { return $this->role === 'gerente'; }
+    public function isAdmin() { return $this->role === 'admin'; }
+
+    // Relación con registros de caja
+    public function cashRegisters()
+    {
+        return $this->hasMany(CashRegister::class);
+    }
 }
