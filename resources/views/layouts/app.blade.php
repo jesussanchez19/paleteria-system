@@ -6,6 +6,7 @@
     <title>@yield('title', 'Paletería')</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @stack('styles')
 </head>
 
 <body class="min-h-screen flex flex-col bg-slate-50 text-slate-900">
@@ -26,19 +27,20 @@
                 </button>
                 <div id="menu-dropdown" class="hidden absolute right-0 mt-2 w-40 bg-white text-slate-800 rounded shadow-lg z-50">
                     @if(!auth()->check())
-                        <a href="{{ route('login') }}" class="block px-4 py-2 hover:bg-pink-100">Iniciar sesión</a>
+                        <a href="{{ route('login') }}" class="block px-4 py-2 hover:bg-pink-100">🔐 Iniciar sesión</a>
                     @else
                         @php $user = auth()->user(); @endphp
-                        @if($user->isGerente() || $user->isAdmin())
+                        @if($user->isGerente())
                             <a href="{{ route('panel.index') }}" class="block px-4 py-2 hover:bg-pink-100">🏠 Panel</a>
+                            <a href="{{ route('panel.dashboard') }}" class="block px-4 py-2 hover:bg-pink-100">📊 Dashboard</a>
+                            <a href="{{ route('pos.index') }}" class="block px-4 py-2 hover:bg-pink-100">🛒 POS/Ventas</a>
                             <a href="{{ route('vendedores.index') }}" class="block px-4 py-2 hover:bg-pink-100">👥 Vendedores</a>
                             <a href="{{ route('products.index') }}" class="block px-4 py-2 hover:bg-pink-100">🧊 Productos</a>
                             <a href="{{ route('reportes.index') }}" class="block px-4 py-2 hover:bg-pink-100">📊 Reportes</a>
-                            <a href="{{ route('ia.index') }}" class="block px-4 py-2 hover:bg-pink-100">🤖 IA</a>
-                            <a href="{{ route('config.index') }}" class="block px-4 py-2 hover:bg-pink-100">⚙️ Configuración</a>
-                            @if($user->isAdmin())
-                                <a href="{{ route('config.critical') }}" class="block px-4 py-2 hover:bg-pink-100">🔒 Config. Crítica</a>
-                            @endif
+                            <a href="{{ route('panel.caja.index') }}" class="block px-4 py-2 hover:bg-pink-100">💵 Caja</a>
+                            <a href="{{ route('panel.bitacora') }}" class="block px-4 py-2 hover:bg-pink-100">🧾 Bitácora</a>
+
+                            <a href="{{ route('panel.config') }}" class="block px-4 py-2 hover:bg-pink-100">⚙️ Configuración</a>
                         @endif
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
@@ -75,5 +77,7 @@
         </div>
     </footer>
 
+    @include('partials.chat-flotante')
+    @stack('scripts')
 </body>
 </html>

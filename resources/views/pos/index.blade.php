@@ -22,6 +22,43 @@
         @endif
     </div>
 
+    {{-- Control de Caja --}}
+    <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            @if($openRegister)
+                {{-- Caja abierta --}}
+                <div class="flex items-center gap-3">
+                    <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 font-bold text-sm">
+                        <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                        Caja abierta
+                    </span>
+                    <span class="text-sm text-slate-600">
+                        Apertura: <b>${{ number_format($openRegister->opening_amount, 2) }}</b> |
+                        Ventas: <b>${{ number_format($salesDuringShift, 2) }}</b> |
+                        Esperado: <b class="text-emerald-600">${{ number_format($expectedAmount, 2) }}</b>
+                    </span>
+                </div>
+                <form method="POST" action="{{ route('caja.cerrar') }}" class="flex items-center gap-2" onsubmit="return confirm('¿Cerrar caja? Ingresa el dinero real en caja.')">
+                    @csrf
+                    <input type="number" step="0.01" name="closing_amount" placeholder="Dinero real" required
+                           class="w-32 px-3 py-2 rounded-xl border border-slate-200 text-sm">
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-rose-500 text-white font-bold hover:bg-rose-600 transition text-sm">
+                        Cerrar caja
+                    </button>
+                </form>
+            @else
+                {{-- Caja cerrada --}}
+                <div class="flex items-center gap-3">
+                    <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 text-slate-600 font-bold text-sm">
+                        <span class="w-2 h-2 bg-slate-400 rounded-full"></span>
+                        Caja cerrada
+                    </span>
+                    <span class="text-sm text-slate-500">Horario: Lunes a Domingo de 8:30am a 5:00pm</span>
+                </div>
+            @endif
+        </div>
+    </div>
+
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
     <section class="lg:col-span-2">
@@ -257,7 +294,15 @@
         }
     }, true);
 
+    // Estado de caja (desde PHP)
+    const cajaAbierta = {{ $openRegister ? 'true' : 'false' }};
+
     function checkout() {
+        if (!cajaAbierta) {
+            alert('Debes abrir la caja antes de poder cobrar.');
+            return;
+        }
+
         if (cart.size === 0) {
             alert('El carrito está vacío');
             return;

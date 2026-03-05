@@ -76,6 +76,13 @@
         </tbody>
     </table>
 
+    @if(!empty($qrBase64))
+    <div class="qrbox">
+        <p><b>QR del reporte</b></p>
+        <img src="{{ $qrBase64 }}" alt="QR">
+        <p class="small">{{ $privateUrl }}</p>
+    </div>
+    @endif
 
 </body>
 </html>

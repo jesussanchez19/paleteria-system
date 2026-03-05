@@ -7,57 +7,102 @@
     <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
             <h1 class="text-2xl sm:text-3xl font-extrabold">Reportes y gráficas 📊</h1>
-            <p class="text-slate-600">Fecha base (hoy): <b>{{ $today }}</b></p>
+            <p class="text-slate-600">
+                Período: <b>{{ $periodoLabel }}</b>
+            </p>
         </div>
 
         <div class="flex items-center gap-2">
+            <a href="{{ route('reportes.pdf', ['start_date' => $startDate ?? $today, 'end_date' => $endDate ?? $today]) }}"
+               class="px-4 py-2 rounded-xl bg-rose-500 text-white font-bold hover:bg-rose-600 transition">
+                📄 Descargar PDF
+            </a>
+
+            @if(!empty($qrBase64))
+            <div class="flex items-center gap-2 p-1 bg-white border border-slate-200 rounded-lg" title="Escanea para descargar PDF">
+              <img src="{{ $qrBase64 }}" alt="QR" style="width: 64px; height: 64px;">
+            </div>
+            @endif
+
             <a href="{{ route('reporte.diario') }}"
                class="px-4 py-2 rounded-xl bg-white border border-slate-200 font-bold text-slate-800 hover:bg-slate-50 transition">
                 Ver reporte diario
             </a>
 
-            <a href="{{ route('panel.index') }}"
+            <a href="{{ route('reportes.index', ['start_date' => $startDate ?? $today, 'end_date' => $endDate ?? $today]) }}"
                class="px-4 py-2 rounded-xl bg-white border border-slate-200 font-bold text-slate-800 hover:bg-slate-50 transition">
-                ← Volver
+                ← Volver a reportes
             </a>
-
-            {{-- Botón cerrar sesión removido de esta vista --}}
         </div>
     </div>
 
-    {{-- Resumen rápido --}}
+    {{-- Selector de rango de fechas - Solo en vista principal de reportes --}}
     @if(Route::currentRouteName() !== 'reportes.graficas')
-    <div class="grid grid-cols-2 md:grid-cols-2 gap-4">
+    <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+        <form method="GET" action="{{ route('reportes.index') }}" class="flex flex-wrap items-end gap-4">
+            <div>
+                <label for="start_date" class="block text-sm font-medium text-slate-700 mb-1">Fecha inicio</label>
+                <input type="date" name="start_date" id="start_date" 
+                       value="{{ $startDate ?? $today }}"
+                       class="px-3 py-2 border border-slate-300 rounded-lg focus:ring-pink-500 focus:border-pink-500">
+            </div>
+            <div>
+                <label for="end_date" class="block text-sm font-medium text-slate-700 mb-1">Fecha fin</label>
+                <input type="date" name="end_date" id="end_date" 
+                       value="{{ $endDate ?? $today }}"
+                       class="px-3 py-2 border border-slate-300 rounded-lg focus:ring-pink-500 focus:border-pink-500">
+            </div>
+            <button type="submit" 
+                    class="px-4 py-2 bg-pink-500 text-white font-bold rounded-lg hover:bg-pink-600 transition">
+                Filtrar
+            </button>
+            <a href="{{ route('reportes.index') }}" 
+               class="px-4 py-2 bg-slate-200 text-slate-700 font-bold rounded-lg hover:bg-slate-300 transition">
+                Hoy
+            </a>
+            <a href="{{ route('reportes.index', ['start_date' => now()->startOfWeek()->toDateString(), 'end_date' => now()->toDateString()]) }}" 
+               class="px-4 py-2 bg-slate-200 text-slate-700 font-bold rounded-lg hover:bg-slate-300 transition">
+                Esta semana
+            </a>
+            <a href="{{ route('reportes.index', ['start_date' => now()->startOfMonth()->toDateString(), 'end_date' => now()->toDateString()]) }}" 
+               class="px-4 py-2 bg-slate-200 text-slate-700 font-bold rounded-lg hover:bg-slate-300 transition">
+                Este mes
+            </a>
+        </form>
+    </div>
+    @endif
+
+    {{-- Resumen rápido --}}
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-            <p class="text-sm text-slate-600">Hoy (ventas)</p>
+            <p class="text-sm text-slate-600">{{ ($isRange ?? false) ? 'Período' : 'Hoy' }} (ventas)</p>
             <p class="text-2xl font-extrabold">{{ $compare['today']['qty'] }}</p>
         </div>
         <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-            <p class="text-sm text-slate-600">Ayer (ventas)</p>
+            <p class="text-sm text-slate-600">{{ ($isRange ?? false) ? 'Período anterior' : 'Ayer' }} (ventas)</p>
             <p class="text-2xl font-extrabold">{{ $compare['yesterday']['qty'] }}</p>
         </div>
         <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-            <p class="text-sm text-slate-600">Hoy (total)</p>
+            <p class="text-sm text-slate-600">{{ ($isRange ?? false) ? 'Período' : 'Hoy' }} (total)</p>
             <p class="text-2xl font-extrabold">${{ number_format($compare['today']['total'], 2) }}</p>
         </div>
         <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-            <p class="text-sm text-slate-600">Ayer (total)</p>
+            <p class="text-sm text-slate-600">{{ ($isRange ?? false) ? 'Período anterior' : 'Ayer' }} (total)</p>
             <p class="text-2xl font-extrabold">${{ number_format($compare['yesterday']['total'], 2) }}</p>
         </div>
     </div>
-    @endif
 
     {{-- Solo mostrar las dos gráficas principales aquí --}}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-            <h2 class="text-lg font-extrabold">Ventas por hora (hoy)</h2>
+            <h2 class="text-lg font-extrabold">Ventas por hora ({{ $periodoLabel }})</h2>
             <p class="text-sm text-slate-600">Cantidad de ventas por hora.</p>
             <div class="mt-4">
                 <canvas id="chartSalesByHour" height="140"></canvas>
             </div>
         </div>
         <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-            <h2 class="text-lg font-extrabold">Top productos (hoy)</h2>
+            <h2 class="text-lg font-extrabold">Top productos ({{ $periodoLabel }})</h2>
             <p class="text-sm text-slate-600">Top 10 por cantidad.</p>
             <div class="mt-4">
                 <canvas id="chartTopProducts" height="140"></canvas>
@@ -67,21 +112,21 @@
 
     @if(Route::currentRouteName() !== 'reportes.graficas')
     <div class="mt-8 flex justify-center">
-        <a href="{{ route('reportes.graficas') }}" class="px-6 py-3 rounded-xl bg-pink-500 text-white font-bold hover:bg-pink-600 transition text-lg">Ver todas las gráficas y detalles</a>
+        <a href="{{ route('reportes.graficas', ['start_date' => $startDate ?? $today, 'end_date' => $endDate ?? $today]) }}" class="px-6 py-3 rounded-xl bg-pink-500 text-white font-bold hover:bg-pink-600 transition text-lg">Ver todas las gráficas y detalles</a>
     </div>
     @endif
 
     @if(Route::currentRouteName() === 'reportes.graficas')
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-            <h2 class="text-lg font-extrabold">Ventas por vendedor (hoy)</h2>
+            <h2 class="text-lg font-extrabold">Ventas por vendedor ({{ $periodoLabel }})</h2>
             <p class="text-sm text-slate-600">Total vendido por usuario.</p>
             <div class="mt-4">
                 <canvas id="chartSalesBySeller" height="140"></canvas>
             </div>
         </div>
         <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-            <h2 class="text-lg font-extrabold">Ingresos por categoría (hoy)</h2>
+            <h2 class="text-lg font-extrabold">Ingresos por categoría ({{ $periodoLabel }})</h2>
             <p class="text-sm text-slate-600">Total vendido por categoría.</p>
             <div class="mt-4">
                 <canvas id="chartRevenueByCategory" height="140"></canvas>
@@ -90,14 +135,14 @@
     </div>
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-            <h2 class="text-lg font-extrabold">Ventas totales (últimos 7 días)</h2>
+            <h2 class="text-lg font-extrabold">Ventas totales ({{ $periodoLabel }})</h2>
             <p class="text-sm text-slate-600">Total vendido por día.</p>
             <div class="mt-4">
                 <canvas id="chartSalesLast7Days" height="140"></canvas>
             </div>
         </div>
         <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-            <h2 class="text-lg font-extrabold">Ticket promedio (últimos 7 días)</h2>
+            <h2 class="text-lg font-extrabold">Ticket promedio ({{ $periodoLabel }})</h2>
             <p class="text-sm text-slate-600">Promedio de venta por ticket.</p>
             <div class="mt-4">
                 <canvas id="chartAvgTicketLast7Days" height="140"></canvas>

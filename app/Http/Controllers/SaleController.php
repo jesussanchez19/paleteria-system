@@ -112,6 +112,13 @@ class SaleController extends Controller
 
             DB::commit();
 
+            // Registrar en bitácora
+            audit_log('sale.created', 'pos', $sale, [
+                'total' => '$' . number_format($sale->total, 2),
+                'productos' => $normalized->count() . ' productos',
+                'vendedor' => auth()->user()->name ?? 'Sistema',
+            ]);
+
             // Limpieza del carrito en frontend: lo haremos desde JS
             if ($request->expectsJson() || $request->isJson() || $request->wantsJson()) {
                 return response()->json([

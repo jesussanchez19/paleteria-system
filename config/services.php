@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'openweather' => [
+        'key' => env('OPENWEATHER_API_KEY'),
+        'units' => env('OPENWEATHER_UNITS', 'metric'),
+        'lang' => env('OPENWEATHER_LANG', 'es'),
+    ],
+
 ];
