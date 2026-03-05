@@ -52,6 +52,17 @@ jobs:
       - name: Install Composer deps
         run: composer install --no-interaction --no-progress --prefer-dist
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install NPM deps
+        run: npm ci
+
+      - name: Build assets
+        run: npm run build
+
       - name: Prepare env
         run: |
           cp .env.example .env
@@ -69,14 +80,6 @@ jobs:
 
       - name: Run tests
         run: php artisan test
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Install NPM deps
-        run: npm ci
 
       - name: Build assets
         run: npm run build
