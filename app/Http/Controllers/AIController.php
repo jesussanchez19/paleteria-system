@@ -161,7 +161,7 @@ class AIController extends Controller
         // === TOP PRODUCTOS ===
         $topProductos = DB::table('sale_details')
             ->join('products', 'sale_details.product_id', '=', 'products.id')
-            ->select('products.name', DB::raw('SUM(sale_details.qty) as qty'), DB::raw('SUM(sale_details.subtotal) as total'))
+            ->select('products.name', DB::raw('SUM(sale_details.qty) as qty'), DB::raw('SUM(sale_details.qty * sale_details.price_unit) as total'))
             ->groupBy('products.id', 'products.name')
             ->orderByDesc('qty')
             ->limit(5)
@@ -213,7 +213,7 @@ class AIController extends Controller
         // === CATEGORÍAS ===
         $ventasPorCategoria = DB::table('sale_details')
             ->join('products', 'sale_details.product_id', '=', 'products.id')
-            ->select('products.category', DB::raw('SUM(sale_details.qty) as qty'), DB::raw('SUM(sale_details.subtotal) as total'))
+            ->select('products.category', DB::raw('SUM(sale_details.qty) as qty'), DB::raw('SUM(sale_details.qty * sale_details.price_unit) as total'))
             ->whereNotNull('products.category')
             ->groupBy('products.category')
             ->orderByDesc('total')
@@ -273,12 +273,12 @@ class AIController extends Controller
         }
 
         // === NEGOCIO ===
-        $nombreNegocio = app_setting('business_name', 'Paletería');
+        $nombreNegocio = app_setting('business_name', 'Creamyx');
         $fechaHoy = now()->format('l d/m/Y');
         $horaActual = now()->format('H:i');
 
         $context = "
-Eres el asistente IA de '{$nombreNegocio}', una paletería en México.
+Eres el asistente IA de '{$nombreNegocio}', una heladería/paletería en México.
 Fecha: {$fechaHoy}, Hora: {$horaActual}
 Responde SIEMPRE en español, de forma directa y con datos específicos del negocio.
 

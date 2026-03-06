@@ -45,7 +45,7 @@ class DashboardController extends Controller
             ->select(
                 'products.name',
                 DB::raw('SUM(sale_details.qty) as qty'),
-                DB::raw('SUM(sale_details.subtotal) as revenue')
+                DB::raw('SUM(sale_details.qty * sale_details.price_unit) as revenue')
             )
             ->where('sale_details.created_at', '>=', now()->subDays(30))
             ->groupBy('products.id', 'products.name')
@@ -59,7 +59,7 @@ class DashboardController extends Controller
             ->select(
                 'products.category',
                 DB::raw('SUM(sale_details.qty) as qty'),
-                DB::raw('SUM(sale_details.subtotal) as revenue')
+                DB::raw('SUM(sale_details.qty * sale_details.price_unit) as revenue')
             )
             ->whereNotNull('products.category')
             ->where('sale_details.created_at', '>=', now()->subDays(30))
@@ -290,7 +290,7 @@ class DashboardController extends Controller
         $stockBajoTxt = $stockBajo->isNotEmpty() ? $stockBajo->map(fn($p) => "{$p->name}:{$p->stock}")->implode(', ') : 'ninguno';
 
         $prompt = "
-Eres el asistente IA de una paletería. Genera un RESUMEN EJECUTIVO muy breve (máximo 3 oraciones) del estado actual del negocio.
+Eres el asistente IA de una heladería/paletería. Genera un RESUMEN EJECUTIVO muy breve (máximo 3 oraciones) del estado actual del negocio.
 
 DATOS:
 - Ventas hoy: \${$stats['ventas_hoy']} MXN en {$stats['transacciones_hoy']} transacciones
@@ -364,7 +364,7 @@ Incluye: 1) estado de ventas, 2) producto destacado, 3) una recomendación clave
         $weather = WeatherSnapshot::where('date', now()->toDateString())->where('city', $city)->first();
 
         $prompt = "
-Eres el asistente IA de una paletería. Responde breve y directamente.
+Eres el asistente IA de una heladería/paletería. Responde breve y directamente.
 
 DATOS DEL NEGOCIO HOY:
 - Ventas: \${$ventasHoy} MXN en {$transacciones} ventas

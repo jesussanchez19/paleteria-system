@@ -97,7 +97,7 @@
 <body>
 <div class="ticket-container">
     <div class="ticket-header">
-        <h2>Paletería <span style="font-size:1.2em;">🍧</span></h2>
+        <h2>Creamyx <span style="font-size:1.2em;">🍦</span></h2>
         <small>Sistema de ventas</small>
     </div>
     <div class="ticket-info">

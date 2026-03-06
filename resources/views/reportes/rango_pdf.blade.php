@@ -29,7 +29,7 @@
 </head>
 <body>
 
-    <p class="title">Reporte por rango — Paletería 🍧</p>
+    <p class="title">Reporte por rango — Creamyx 🍦</p>
     <p class="meta">Período: <b>{{ $periodoLabel }}</b></p>
     <p class="meta">Generado: {{ now()->format('d/m/Y H:i') }}</p>
 

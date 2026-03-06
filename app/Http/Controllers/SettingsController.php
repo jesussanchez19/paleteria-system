@@ -15,7 +15,7 @@ class SettingsController extends Controller
             'business_close_time' => app_setting('business_close_time', '17:00'),
             
             // Negocio
-            'business_name' => app_setting('business_name', 'Paletería'),
+            'business_name' => app_setting('business_name', 'Creamyx'),
             'business_city' => app_setting('business_city', 'Mexico City'),
             'business_address' => app_setting('business_address', ''),
             'business_lat' => app_setting('business_lat', '19.4326'),

@@ -37,6 +37,7 @@ return [
 
     'openweather' => [
         'key' => env('OPENWEATHER_API_KEY'),
+        'city' => env('OPENWEATHER_CITY', 'Culiacan'),
         'units' => env('OPENWEATHER_UNITS', 'metric'),
         'lang' => env('OPENWEATHER_LANG', 'es'),
     ],

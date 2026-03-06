@@ -6,20 +6,44 @@ use App\Models\WeatherSnapshot;
 use App\Models\Sale;
 use App\Models\Product;
 use App\Services\GeminiService;
+use App\Services\WeatherService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 
 class WeatherInsightController extends Controller
 {
-    public function index(GeminiService $gemini)
+    public function index(GeminiService $gemini, WeatherService $weatherService)
     {
         $city = app_setting('business_city', 'Mexico City');
+        $today = now()->toDateString();
 
         // Clima de hoy
-        $weather = WeatherSnapshot::where('date', now()->toDateString())
+        $weather = WeatherSnapshot::where('date', $today)
             ->where('city', $city)
             ->first();
+
+        // Si no hay snapshot de hoy, obtenerlo en vivo
+        if (!$weather) {
+            $data = $weatherService->getCurrentByCity($city);
+            
+            if ($data['ok']) {
+                $weather = WeatherSnapshot::create([
+                    'date' => $today,
+                    'city' => $city,
+                    'temp' => (float) $data['temp'],
+                    'condition' => (string) $data['condition'],
+                    'raw' => $data['raw'],
+                ]);
+
+                audit_log('weather.snapshot.ondemand', 'weather', null, [
+                    'city' => $city,
+                    'temp' => $data['temp'],
+                    'condition' => $data['condition'],
+                    'source' => 'weather_insight',
+                ]);
+            }
+        }
 
         // Historial de clima últimos 7 días con ventas
         $historialClima = WeatherSnapshot::where('city', $city)
