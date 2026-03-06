@@ -1,19 +1,12 @@
-# Configuración alternativa para Railway usando Nixpacks (más simple)
+# Configuración para Railway usando Nixpacks
 [phases.setup]
-nixPkgs = ["php82", "php82Extensions.pdo", "php82Extensions.pdo_mysql", "php82Extensions.gd", "php82Extensions.mbstring", "php82Extensions.zip", "php82Extensions.bcmath", "nodejs-18_x", "npm-9_x"]
+nixPkgs = ["php82", "php82Extensions.pdo", "php82Extensions.pdo_mysql", "php82Extensions.pdo_pgsql", "php82Extensions.gd", "php82Extensions.mbstring", "php82Extensions.zip", "php82Extensions.bcmath", "php82Extensions.xml", "php82Extensions.curl", "nodejs-18_x", "npm-9_x"]
 
 [phases.install]
 cmds = [
     "composer install --no-dev --optimize-autoloader",
     "npm ci",
     "npm run build"
-]
-
-[phases.build]
-cmds = [
-    "php artisan config:cache",
-    "php artisan route:cache", 
-    "php artisan view:cache"
 ]
 
 [start]
