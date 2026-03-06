@@ -38,9 +38,9 @@ RUN npm ci && npm run build
 RUN chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
-# Copiar script de inicio
+# Copiar script de inicio y convertir líneas a Unix
 COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+RUN sed -i 's/\r$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh
 
 # Puerto dinámico de Railway
 EXPOSE 8080
