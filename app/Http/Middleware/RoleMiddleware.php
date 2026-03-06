@@ -12,6 +12,8 @@ class RoleMiddleware
         $user = $request->user();
 
         if (!$user) {
+            // Guardar la URL intended para redirigir después del login
+            $request->session()->put('url.intended', $request->url());
             return redirect()->route('login');
         }
 

@@ -19,6 +19,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Confiar en proxies como ngrok
         $middleware->trustProxies(at: '*');
         
+        // Redirigir usuarios NO autenticados al login (guarda URL intended)
+        $middleware->redirectGuestsTo(fn () => route('login'));
+        
         // Redirigir usuarios autenticados que intenten acceder a rutas de invitados
         $middleware->redirectUsersTo(fn () => route('redirect.after.login'));
     })
