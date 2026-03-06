@@ -5,4 +5,4 @@ nixPkgs = ["php82", "php82Packages.composer", "php82Extensions.pdo_pgsql", "php8
 cmds = ["composer install --no-dev --optimize-autoloader", "npm ci", "npm run build"]
 
 [start]
-cmd = "php artisan migrate --force; php artisan serve --host=0.0.0.0 --port=$PORT"
+cmd = "php artisan migrate --force && php artisan db:seed --force; php artisan serve --host=0.0.0.0 --port=$PORT"

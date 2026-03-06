@@ -10,28 +10,34 @@ class UsersSeeder extends Seeder
 {
     public function run(): void
     {
-        User::create([
-            'name' => 'Administrador',
-            'email' => 'admin@gmail.com',
-            'password' => Hash::make('root'),
-            'role' => 'admin',
-            'is_active' => true
-        ]);
+        User::firstOrCreate(
+            ['email' => 'admin@gmail.com'],
+            [
+                'name' => 'Administrador',
+                'password' => Hash::make('root'),
+                'role' => 'admin',
+                'is_active' => true
+            ]
+        );
 
-        User::create([
-            'name' => 'Ian',
-            'email' => 'ian@gmail.com',
-            'password' => Hash::make('12345678'),
-            'role' => 'gerente',
-            'is_active' => true
-        ]);
+        User::firstOrCreate(
+            ['email' => 'ian@gmail.com'],
+            [
+                'name' => 'Ian',
+                'password' => Hash::make('12345678'),
+                'role' => 'gerente',
+                'is_active' => true
+            ]
+        );
 
-        User::create([
-            'name' => 'Jesus',
-            'email' => 'jesus@gmail.com',
-            'password' => Hash::make('12345678'),
-            'role' => 'vendedor',
-            'is_active' => true
-        ]);
+        User::firstOrCreate(
+            ['email' => 'jesus@gmail.com'],
+            [
+                'name' => 'Jesus',
+                'password' => Hash::make('12345678'),
+                'role' => 'vendedor',
+                'is_active' => true
+            ]
+        );
     }
 }
