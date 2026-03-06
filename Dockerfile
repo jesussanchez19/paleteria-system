@@ -38,12 +38,11 @@ RUN npm ci && npm run build
 RUN chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
+# Copiar script de inicio
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
 # Puerto dinámico de Railway
 EXPOSE 8080
 
-# Comando de inicio - Railway asigna PORT automáticamente
-CMD php artisan config:cache && \
-    php artisan route:cache && \
-    php artisan view:cache && \
-    php artisan migrate --force && \
-    php artisan serve --host=0.0.0.0 --port=${PORT:-8080}
+CMD ["/docker-entrypoint.sh"]
