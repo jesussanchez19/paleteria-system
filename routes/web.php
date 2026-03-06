@@ -11,8 +11,29 @@ use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\DailyReportController;
 use App\Http\Controllers\DashboardStatsController;
 
-// Público
-Route::get('/', fn () => redirect()->route('catalogo.index'));
+// Público - redirige según cookie de computadora de trabajo
+Route::get('/', function () {
+    // Si tiene cookie de computadora de trabajo, va al login
+    if (request()->cookie('work_computer') === 'true') {
+        return redirect()->route('login');
+    }
+    return redirect()->route('catalogo.index');
+});
+
+// Marcar esta computadora como de trabajo (guarda cookie por 1 año)
+Route::get('/marcar-pc-trabajo', function () {
+    return redirect()->route('panel.config.critica')
+        ->withCookie(cookie()->forever('work_computer', 'true'));
+})->middleware(['auth', 'role:admin'])->name('marcar.pc.trabajo');
+
+// Desmarcar esta computadora como de trabajo
+Route::get('/desmarcar-pc-trabajo', function () {
+    return redirect()->route('panel.config.critica')
+        ->withCookie(cookie()->forget('work_computer'));
+})->middleware(['auth', 'role:admin'])->name('desmarcar.pc.trabajo');
+
+// Acceso directo para empleados (computadora de trabajo)
+Route::get('/sistema', fn () => redirect()->route('login'))->name('sistema');
 
 Route::get('/catalogo', [CatalogController::class, 'index'])
     ->name('catalogo.index');
@@ -130,12 +151,22 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
         ->name('panel.config.critica.update');
     Route::post('/panel/config-critica/gerente', [\App\Http\Controllers\CriticalSettingsController::class, 'updateGerente'])
         ->name('panel.config.critica.gerente');
+    Route::post('/panel/config-critica/gerente/crear', [\App\Http\Controllers\CriticalSettingsController::class, 'storeGerente'])
+        ->name('panel.config.critica.gerente.store');
     Route::post('/panel/config-critica/clear-cache', [\App\Http\Controllers\CriticalSettingsController::class, 'clearCache'])
         ->name('panel.config.critica.clear-cache');
     Route::post('/panel/config-critica/clean-logs', [\App\Http\Controllers\CriticalSettingsController::class, 'cleanOldLogs'])
         ->name('panel.config.critica.clean-logs');
     Route::post('/panel/config-critica/test-connections', [\App\Http\Controllers\CriticalSettingsController::class, 'testConnections'])
         ->name('panel.config.critica.test-connections');
+    
+    // Rutas de backups
+    Route::post('/panel/config-critica/backup/create', [\App\Http\Controllers\CriticalSettingsController::class, 'createBackup'])
+        ->name('panel.config.critica.backup.create');
+    Route::get('/panel/config-critica/backup/download/{filename}', [\App\Http\Controllers\CriticalSettingsController::class, 'downloadBackup'])
+        ->name('panel.config.critica.backup.download');
+    Route::delete('/panel/config-critica/backup/{filename}', [\App\Http\Controllers\CriticalSettingsController::class, 'deleteBackup'])
+        ->name('panel.config.critica.backup.delete');
 });
 
 Route::middleware(['auth', 'role:gerente'])->group(function () {

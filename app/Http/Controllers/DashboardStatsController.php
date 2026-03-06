@@ -60,7 +60,7 @@ class DashboardStatsController extends Controller
             ->whereDate('sales.created_at', '>=', $startDate)
             ->whereDate('sales.created_at', '<=', $endDate)
             ->groupBy('products.id', 'products.name')
-            ->selectRaw('products.name, COALESCE(SUM(sale_details.qty),0) as qty, COALESCE(SUM(sale_details.subtotal),0) as total')
+            ->selectRaw('products.name, COALESCE(SUM(sale_details.qty),0) as qty, COALESCE(SUM(sale_details.qty * sale_details.price_unit),0) as total')
             ->orderByDesc('qty')
             ->limit(10)
             ->get();
@@ -85,7 +85,7 @@ class DashboardStatsController extends Controller
             ->whereDate('sales.created_at', '>=', $startDate)
             ->whereDate('sales.created_at', '<=', $endDate)
             ->groupBy('products.category')
-            ->selectRaw("COALESCE(products.category,'Sin categoría') as category, COALESCE(SUM(sale_details.subtotal),0) as total")
+            ->selectRaw("COALESCE(products.category,'Sin categoría') as category, COALESCE(SUM(sale_details.qty * sale_details.price_unit),0) as total")
             ->orderByDesc('total')
             ->get();
 
@@ -227,7 +227,7 @@ class DashboardStatsController extends Controller
             ->whereDate('sales.created_at', '>=', $startDate)
             ->whereDate('sales.created_at', '<=', $endDate)
             ->groupBy('products.id', 'products.name')
-            ->selectRaw('products.name, COALESCE(SUM(sale_details.qty),0) as qty, COALESCE(SUM(sale_details.subtotal),0) as total')
+            ->selectRaw('products.name, COALESCE(SUM(sale_details.qty),0) as qty, COALESCE(SUM(sale_details.qty * sale_details.price_unit),0) as total')
             ->orderByDesc('qty')
             ->limit(10)
             ->get();
@@ -249,7 +249,7 @@ class DashboardStatsController extends Controller
             ->whereDate('sales.created_at', '>=', $startDate)
             ->whereDate('sales.created_at', '<=', $endDate)
             ->groupBy('products.category')
-            ->selectRaw("COALESCE(products.category,'Sin categoría') as category, COALESCE(SUM(sale_details.subtotal),0) as total")
+            ->selectRaw("COALESCE(products.category,'Sin categoría') as category, COALESCE(SUM(sale_details.qty * sale_details.price_unit),0) as total")
             ->orderByDesc('total')
             ->get();
 

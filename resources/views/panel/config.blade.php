@@ -57,10 +57,10 @@
                         <label class="text-sm font-bold text-slate-700">📍 Ubicación del negocio</label>
                         <button type="button" id="btn-get-location" 
                                 class="text-xs px-3 py-1 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition">
-                            📍 Usar mi ubicación
+                            � Actualizar ubicación
                         </button>
                     </div>
-                    <p class="text-xs text-slate-500 mb-2">El mapa intentará obtener tu ubicación automáticamente. También puedes hacer clic o arrastrar el marcador.</p>
+                    <p class="text-xs text-slate-500 mb-2">La ubicación guardada se muestra en el mapa de "Visítanos". Puedes hacer clic en el mapa o arrastrar el marcador para ajustarla.</p>
                     <div id="location-map" class="w-full h-64 rounded-xl border border-slate-200 z-0 relative"></div>
                     <input type="hidden" name="business_lat" id="business_lat" value="{{ $data['business_lat'] }}">
                     <input type="hidden" name="business_lng" id="business_lng" value="{{ $data['business_lng'] }}">
@@ -278,45 +278,6 @@ document.addEventListener('DOMContentLoaded', function() {
         updateLocation(lat, lng, fetchAddress);
     }
     
-    // Si NO hay ubicación guardada, intentar obtener ubicación automática
-    // Pero si ya existe una ciudad o dirección guardada, respetarla
-    const savedCity = document.getElementById('business_city').value.trim();
-    const savedAddress = document.getElementById('business_address').value.trim();
-    
-    const hasValidSavedLocation = (savedLat && savedLng && savedLat !== defaultLat && savedLng !== defaultLng) ||
-        savedAddress !== '' ||
-        (savedCity !== '' && savedCity !== 'Mexico City');
-    
-    if (!hasValidSavedLocation && navigator.geolocation) {
-        // Mostrar mensaje
-        const mapContainer = document.getElementById('location-map');
-        const loadingMsg = document.createElement('div');
-        loadingMsg.id = 'geo-loading';
-        loadingMsg.className = 'absolute top-2 left-2 z-[1000] bg-white px-3 py-2 rounded-lg shadow text-sm text-slate-700';
-        loadingMsg.innerHTML = '📍 Obteniendo ubicación...';
-        mapContainer.style.position = 'relative';
-        mapContainer.appendChild(loadingMsg);
-        
-        navigator.geolocation.getCurrentPosition(
-            // Éxito
-            function(position) {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                setMarkerPosition(lat, lng, 17, true);
-                loadingMsg.innerHTML = '✅ Ubicación obtenida';
-                setTimeout(() => loadingMsg.remove(), 2000);
-            },
-            // Error
-            function(error) {
-                console.log('Geolocalización no disponible:', error.message);
-                loadingMsg.innerHTML = '⚠️ No se pudo obtener ubicación. Mueve el marcador manualmente.';
-                setTimeout(() => loadingMsg.remove(), 3000);
-            },
-            // Opciones
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-        );
-    }
-    
     // Click en el mapa
     map.on('click', function(e) {
         marker.setLatLng(e.latlng);
@@ -342,15 +303,15 @@ document.addEventListener('DOMContentLoaded', function() {
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 setMarkerPosition(position.coords.latitude, position.coords.longitude, 17, true);
-                this.textContent = '✅ ¡Listo!';
+                this.textContent = '✅ ¡Ubicación actualizada!';
                 setTimeout(() => {
-                    this.textContent = '📍 Usar mi ubicación';
+                    this.textContent = '🔄 Actualizar ubicación';
                     this.disabled = false;
                 }, 2000);
             },
             (error) => {
                 alert('No se pudo obtener tu ubicación. Asegúrate de dar permiso de ubicación al navegador.');
-                this.textContent = '📍 Usar mi ubicación';
+                this.textContent = '🔄 Actualizar ubicación';
                 this.disabled = false;
             },
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }

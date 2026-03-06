@@ -29,7 +29,7 @@ class DailyReportController extends Controller
             ->join('products', 'sale_details.product_id', '=', 'products.id')
             ->whereDate('sales.created_at', $today)
             ->groupBy('products.id', 'products.name')
-            ->selectRaw('products.id as product_id, products.name, SUM(sale_details.qty) as qty, SUM(sale_details.subtotal) as total')
+            ->selectRaw('products.id as product_id, products.name, SUM(sale_details.qty) as qty, SUM(sale_details.qty * sale_details.price_unit) as total')
             ->orderByDesc('total')
             ->get();
 

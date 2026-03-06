@@ -32,7 +32,7 @@ class WeeklyReportController extends Controller
             ->selectRaw("
                 products.name,
                 COALESCE(SUM(sale_details.qty),0) as qty,
-                COALESCE(SUM(sale_details.subtotal),0) as total
+                COALESCE(SUM(sale_details.qty * sale_details.price_unit),0) as total
             ")
             ->orderByDesc('qty')
             ->limit(10)
