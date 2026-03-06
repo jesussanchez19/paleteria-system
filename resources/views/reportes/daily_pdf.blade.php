@@ -30,7 +30,7 @@
 </head>
 <body>
 
-    <p class="title">Reporte diario — Paletería 🍧</p>
+    <p class="title">Reporte diario — Creamyx 🍦</p>
     <p class="meta">Fecha: <b>{{ $date }}</b></p>
 
     <div class="cards">

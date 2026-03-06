@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\CashRegister;
+use App\Models\WeatherSnapshot;
+use App\Services\WeatherService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -49,7 +51,41 @@ class AuthenticatedSessionController extends Controller
             CashRegister::openForUser($user->id, 0);
         }
 
-        return redirect()->intended(route('redirect.after.login'));
+        // Sincronizar clima en background si no hay datos de hoy (no bloquea)
+        if (!WeatherSnapshot::where('date', now()->toDateString())->exists()) {
+            dispatch(function () {
+                $this->syncWeather();
+            })->afterResponse();
+        }
+
+        // Redirigir siempre según el rol, ignorando URL intended
+        return redirect()->route('redirect.after.login');
+    }
+
+    /**
+     * Sincroniza el clima (se ejecuta después de la respuesta).
+     */
+    private function syncWeather(): void
+    {
+        try {
+            $weather = app(WeatherService::class);
+            $city = app_setting('business_city', 'Mexico City');
+            $data = $weather->getCurrentByCity($city);
+
+            if ($data['ok'] ?? false) {
+                WeatherSnapshot::updateOrCreate(
+                    ['date' => now()->toDateString()],
+                    [
+                        'temp' => $data['temp'],
+                        'condition' => $data['condition'],
+                        'humidity' => $data['humidity'],
+                        'wind_speed' => $data['wind_speed'],
+                    ]
+                );
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Error sincronizando clima: ' . $e->getMessage());
+        }
     }
 
     /**

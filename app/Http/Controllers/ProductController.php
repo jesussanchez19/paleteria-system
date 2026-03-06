@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Services\ImageGeneratorService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
@@ -21,14 +23,22 @@ class ProductController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name'      => ['required', 'string', 'min:2'],
-            'category'  => ['nullable', 'string', 'max:50'],
-            'price'     => ['required', 'numeric', 'min:0'],
-            'stock'     => ['required', 'integer', 'min:0'],
-            'is_active' => ['nullable'], // checkbox
+            'name'        => ['required', 'string', 'min:2'],
+            'category'    => ['nullable', 'string', 'max:50'],
+            'description' => ['nullable', 'string', 'max:500'],
+            'price'       => ['required', 'numeric', 'min:0'],
+            'stock'       => ['required', 'integer', 'min:0'],
+            'is_active'   => ['nullable'],
+            'image'       => ['nullable', 'string'], // Ruta de imagen generada
+            'image_file'  => ['nullable', 'image', 'max:2048'], // Imagen subida manualmente
         ]);
 
         $data['is_active'] = $request->boolean('is_active');
+
+        // Si se sube imagen manualmente, guardarla
+        if ($request->hasFile('image_file')) {
+            $data['image'] = $request->file('image_file')->store('products', 'public');
+        }
 
         $product = Product::create($data);
 
@@ -50,13 +60,30 @@ class ProductController extends Controller
     public function update(Request $request, Product $product)
     {
         $data = $request->validate([
-            'name'      => ['required', 'string', 'min:2'],
-            'category'  => ['nullable', 'string', 'max:50'],
-            'price'     => ['required', 'numeric', 'min:0'],
-            'is_active' => ['nullable'],
+            'name'        => ['required', 'string', 'min:2'],
+            'category'    => ['nullable', 'string', 'max:50'],
+            'description' => ['nullable', 'string', 'max:500'],
+            'price'       => ['required', 'numeric', 'min:0'],
+            'is_active'   => ['nullable'],
+            'image'       => ['nullable', 'string'],
+            'image_file'  => ['nullable', 'image', 'max:2048'],
         ]);
 
         $data['is_active'] = $request->boolean('is_active');
+
+        // Si se sube imagen manualmente, guardarla y eliminar anterior
+        if ($request->hasFile('image_file')) {
+            if ($product->image) {
+                Storage::disk('public')->delete($product->image);
+            }
+            $data['image'] = $request->file('image_file')->store('products', 'public');
+        }
+        // Si se proporciona nueva imagen generada, eliminar la anterior
+        elseif (!empty($data['image']) && $data['image'] !== $product->image) {
+            if ($product->image) {
+                Storage::disk('public')->delete($product->image);
+            }
+        }
 
         // Capturar cambios antes de actualizar
         $cambios = [];
@@ -72,6 +99,9 @@ class ProductController extends Controller
         if ((bool)$product->is_active !== $data['is_active']) {
             $cambios['estado'] = ($product->is_active ? 'activo' : 'inactivo') . ' → ' . ($data['is_active'] ? 'activo' : 'inactivo');
         }
+        if (!empty($data['image']) && $data['image'] !== $product->image) {
+            $cambios['imagen'] = 'actualizada con IA';
+        }
 
         $product->update($data);
 
@@ -82,8 +112,14 @@ class ProductController extends Controller
 
     public function destroy(Product $product)
     {
+        // Eliminar imagen si existe
+        if ($product->image) {
+            Storage::disk('public')->delete($product->image);
+        }
+        
         $product->delete();
 
         return redirect()->route('products.index')->with('success', 'Producto eliminado correctamente.');
     }
+
 }

@@ -5,10 +5,10 @@
 @section('content')
 <div class="max-w-4xl mx-auto space-y-6">
 
-    <div class="flex items-end justify-between">
+    <div class="flex items-end justify-between bg-gradient-to-r from-slate-800 to-slate-700 rounded-2xl p-5 shadow-lg">
         <div>
-            <h1 class="text-2xl sm:text-3xl font-extrabold">Configuración crítica 🔐</h1>
-            <p class="text-slate-600">Solo administradores. Ajustes sensibles del sistema.</p>
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-white">Configuración crítica 🔐</h1>
+            <p class="text-white/70">Solo administradores. Ajustes sensibles del sistema.</p>
         </div>
     </div>
 
@@ -22,6 +22,33 @@
         <div class="flex items-center gap-2">
             <span class="text-xl">⚠️</span>
             <p class="text-sm text-amber-800 font-semibold">Precaución: Estos ajustes afectan el funcionamiento crítico del sistema.</p>
+        </div>
+    </div>
+
+    {{-- Computadora de trabajo --}}
+    <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-5 shadow-lg text-white">
+        <div class="flex items-center justify-between">
+            <div>
+                <h2 class="text-lg font-extrabold mb-1">💻 Computadora de trabajo</h2>
+                @if(request()->cookie('work_computer') === 'true')
+                    <p class="text-blue-100 text-sm">Esta PC está marcada como computadora de trabajo. Al entrar a la URL principal irá directo al login.</p>
+                @else
+                    <p class="text-blue-100 text-sm">Esta PC NO está marcada como de trabajo. La URL principal muestra el catálogo público.</p>
+                @endif
+            </div>
+            <div>
+                @if(request()->cookie('work_computer') === 'true')
+                    <a href="{{ route('desmarcar.pc.trabajo') }}" 
+                       class="px-4 py-2 bg-white text-blue-600 rounded-xl font-bold hover:bg-blue-50 transition inline-flex items-center gap-2">
+                        ❌ Desmarcar PC
+                    </a>
+                @else
+                    <a href="{{ route('marcar.pc.trabajo') }}" 
+                       class="px-4 py-2 bg-white text-blue-600 rounded-xl font-bold hover:bg-blue-50 transition inline-flex items-center gap-2">
+                        ✅ Marcar como PC de trabajo
+                    </a>
+                @endif
+            </div>
         </div>
     </div>
 
@@ -84,7 +111,7 @@
 
     {{-- Herramientas de Mantenimiento --}}
     <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-        <h2 class="text-lg font-extrabold mb-4 text-slate-800">🔧 Herramientas de Mantenimiento</h2>
+        <h2 class="text-lg font-extrabold mb-4 text-slate-600">🔧 Herramientas de Mantenimiento</h2>
         
         @if(session('success_tools'))
             <div class="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold">
@@ -125,8 +152,8 @@
                 @csrf
                 <button type="submit" class="w-full p-4 rounded-xl border-2 border-dashed border-slate-300 hover:border-blue-400 hover:bg-blue-50 transition text-center">
                     <span class="text-2xl block mb-1">🧹</span>
-                    <span class="font-bold text-slate-700">Limpiar Caché</span>
-                    <span class="text-xs text-slate-500 block">Config, vistas, rutas</span>
+                    <span class="font-bold text-slate-600">Limpiar Caché</span>
+                    <span class="text-xs text-slate-400 block">Config, vistas, rutas</span>
                 </button>
             </form>
 
@@ -135,8 +162,8 @@
                 @csrf
                 <button type="submit" class="w-full p-4 rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 hover:bg-emerald-50 transition text-center">
                     <span class="text-2xl block mb-1">🔌</span>
-                    <span class="font-bold text-slate-700">Probar Conexiones</span>
-                    <span class="text-xs text-slate-500 block">BD, APIs externas</span>
+                    <span class="font-bold text-slate-600">Probar Conexiones</span>
+                    <span class="text-xs text-slate-400 block">BD, APIs externas</span>
                 </button>
             </form>
 
@@ -147,8 +174,8 @@
                 <input type="hidden" name="days" value="90">
                 <button type="submit" class="w-full p-4 rounded-xl border-2 border-dashed border-slate-300 hover:border-amber-400 hover:bg-amber-50 transition text-center">
                     <span class="text-2xl block mb-1">🗑️</span>
-                    <span class="font-bold text-slate-700">Limpiar Logs</span>
-                    <span class="text-xs text-slate-500 block">Más de 90 días</span>
+                    <span class="font-bold text-slate-600">Limpiar Logs</span>
+                    <span class="text-xs text-slate-400 block">Más de 90 días</span>
                 </button>
             </form>
         </div>
@@ -157,7 +184,7 @@
     {{-- Gestión del Gerente --}}
     @if($gerente)
     <div class="bg-white border border-indigo-200 rounded-2xl p-5 shadow-sm">
-        <h2 class="text-lg font-extrabold mb-4 text-slate-800">👤 Gestión del Gerente</h2>
+        <h2 class="text-lg font-extrabold mb-4 text-slate-600">👤 Gestión del Gerente</h2>
         
         @if(session('success_gerente'))
             <div class="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold">
@@ -175,21 +202,21 @@
             @csrf
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label class="text-sm font-bold text-slate-700">📝 Nombre</label>
+                    <label class="text-sm font-semibold text-slate-600">📝 Nombre</label>
                     <input type="text" name="gerente_name" value="{{ old('gerente_name', $gerente->name) }}"
                            class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" required>
                     @error('gerente_name') <p class="text-sm text-rose-600 mt-1">{{ $message }}</p> @enderror
                 </div>
 
                 <div>
-                    <label class="text-sm font-bold text-slate-700">📧 Email</label>
+                    <label class="text-sm font-semibold text-slate-600">📧 Email</label>
                     <input type="email" name="gerente_email" value="{{ old('gerente_email', $gerente->email) }}"
                            class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" required>
                     @error('gerente_email') <p class="text-sm text-rose-600 mt-1">{{ $message }}</p> @enderror
                 </div>
 
                 <div>
-                    <label class="text-sm font-bold text-slate-700">🔑 Nueva contraseña</label>
+                    <label class="text-sm font-semibold text-slate-600">🔑 Nueva contraseña</label>
                     <input type="password" name="gerente_password" 
                            class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
                            placeholder="Dejar vacío para no cambiar">
@@ -198,7 +225,7 @@
                 </div>
 
                 <div>
-                    <label class="text-sm font-bold text-slate-700">🔑 Confirmar contraseña</label>
+                    <label class="text-sm font-semibold text-slate-600">🔑 Confirmar contraseña</label>
                     <input type="password" name="gerente_password_confirmation" 
                            class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
                            placeholder="Repetir contraseña">
@@ -214,44 +241,76 @@
         </form>
     </div>
     @else
-    <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
-        <p class="text-sm text-amber-800">No hay un gerente registrado en el sistema.</p>
+    <div class="bg-white border border-indigo-200 rounded-2xl p-5 shadow-sm">
+        <h2 class="text-lg font-extrabold mb-4 text-slate-600">👤 Crear Gerente</h2>
+        
+        <div class="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200">
+            <p class="text-sm text-amber-800">⚠️ No hay un gerente registrado. Crea uno para gestionar el sistema.</p>
+        </div>
+
+        @if(session('success_gerente'))
+            <div class="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold">
+                {{ session('success_gerente') }}
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div class="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 font-semibold">
+                {{ session('error') }}
+            </div>
+        @endif
+
+        <form method="POST" action="{{ route('panel.config.critica.gerente.store') }}">
+            @csrf
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="text-sm font-semibold text-slate-600">📝 Nombre</label>
+                    <input type="text" name="gerente_name" value="{{ old('gerente_name') }}"
+                           class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" required>
+                    @error('gerente_name') <p class="text-sm text-rose-600 mt-1">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
+                    <label class="text-sm font-semibold text-slate-600">📧 Email</label>
+                    <input type="email" name="gerente_email" value="{{ old('gerente_email') }}"
+                           class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" required>
+                    @error('gerente_email') <p class="text-sm text-rose-600 mt-1">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
+                    <label class="text-sm font-semibold text-slate-600">🔑 Contraseña</label>
+                    <input type="password" name="gerente_password" 
+                           class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" required>
+                    <p class="text-xs text-slate-500 mt-1">Mínimo 8 caracteres</p>
+                    @error('gerente_password') <p class="text-sm text-rose-600 mt-1">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
+                    <label class="text-sm font-semibold text-slate-600">🔑 Confirmar contraseña</label>
+                    <input type="password" name="gerente_password_confirmation" 
+                           class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" required>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <button type="submit"
+                        class="px-5 py-2 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition">
+                    ➕ Crear gerente
+                </button>
+            </div>
+        </form>
     </div>
     @endif
 
     <form method="POST" action="{{ route('panel.config.critica.update') }}" class="space-y-6">
         @csrf
 
-        {{-- APIs y Servicios Externos --}}
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-            <h2 class="text-lg font-extrabold mb-4 text-slate-800">🔗 APIs y Servicios Externos</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="text-sm font-bold text-slate-700">🤖 API Key de IA (Gemini)</label>
-                    <input type="password" name="ai_api_key" value="{{ $data['ai_api_key'] }}"
-                           class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" 
-                           placeholder="AIzaSy...">
-                    <p class="text-xs text-slate-500 mt-1">Para sugerencias inteligentes</p>
-                    @error('ai_api_key') <p class="text-sm text-rose-600 mt-1">{{ $message }}</p> @enderror
-                </div>
-
-                <div>
-                    <label class="text-sm font-bold text-slate-700">🌤️ API Key del Clima</label>
-                    <input type="password" name="weather_api_key" value="{{ $data['weather_api_key'] }}"
-                           class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" 
-                           placeholder="abc123...">
-                    <p class="text-xs text-slate-500 mt-1">OpenWeatherMap o similar</p>
-                    @error('weather_api_key') <p class="text-sm text-rose-600 mt-1">{{ $message }}</p> @enderror
-                </div>
-            </div>
-        </div>
-
         {{-- Estado del Sistema --}}
         <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-            <h2 class="text-lg font-extrabold mb-4 text-slate-800">⚡ Estado del Sistema</h2>
+            <h2 class="text-lg font-extrabold mb-4 text-slate-600">⚡ Estado del Sistema</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label class="text-sm font-bold text-slate-700">🛠️ Modo mantenimiento</label>
+                    <label class="text-sm font-semibold text-slate-600">🛠️ Modo mantenimiento</label>
                     <select name="maintenance_mode" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2">
                         <option value="0" {{ $data['maintenance_mode'] == '0' ? 'selected' : '' }}>❌ Desactivado</option>
                         <option value="1" {{ $data['maintenance_mode'] == '1' ? 'selected' : '' }}>✅ Activado</option>
@@ -261,7 +320,7 @@
                 </div>
 
                 <div>
-                    <label class="text-sm font-bold text-slate-700">💰 Ventas habilitadas</label>
+                    <label class="text-sm font-semibold text-slate-600">💰 Ventas habilitadas</label>
                     <select name="sales_enabled" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2">
                         <option value="1" {{ $data['sales_enabled'] == '1' ? 'selected' : '' }}>✅ Sí</option>
                         <option value="0" {{ $data['sales_enabled'] == '0' ? 'selected' : '' }}>❌ No</option>
@@ -274,10 +333,10 @@
 
         {{-- Seguridad --}}
         <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-            <h2 class="text-lg font-extrabold mb-4 text-slate-800">🔒 Seguridad</h2>
+            <h2 class="text-lg font-extrabold mb-4 text-slate-600">🔒 Seguridad</h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                    <label class="text-sm font-bold text-slate-700">🚫 Máx intentos login</label>
+                    <label class="text-sm font-semibold text-slate-600">🚫 Máx intentos login</label>
                     <input type="number" name="max_login_attempts" value="{{ $data['max_login_attempts'] }}" 
                            min="1" max="20"
                            class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2">
@@ -286,7 +345,7 @@
                 </div>
 
                 <div>
-                    <label class="text-sm font-bold text-slate-700">⏱️ Timeout sesión (min)</label>
+                    <label class="text-sm font-semibold text-slate-600">⏱️ Timeout sesión (min)</label>
                     <input type="number" name="session_timeout" value="{{ $data['session_timeout'] }}" 
                            min="5" max="480"
                            class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2">
@@ -295,7 +354,7 @@
                 </div>
 
                 <div>
-                    <label class="text-sm font-bold text-slate-700">🔑 Cambiar contraseña (días)</label>
+                    <label class="text-sm font-semibold text-slate-600">🔑 Cambiar contraseña (días)</label>
                     <input type="number" name="force_password_change_days" value="{{ $data['force_password_change_days'] }}" 
                            min="0" max="365"
                            class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2">
@@ -307,10 +366,10 @@
 
         {{-- Límites de Ventas --}}
         <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-            <h2 class="text-lg font-extrabold mb-4 text-slate-800">💵 Límites de Ventas</h2>
+            <h2 class="text-lg font-extrabold mb-4 text-slate-600">💵 Límites de Ventas</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label class="text-sm font-bold text-slate-700">💳 Monto máx sin autorización ($)</label>
+                    <label class="text-sm font-semibold text-slate-600">💳 Monto máx sin autorización ($)</label>
                     <input type="number" name="max_sale_without_auth" value="{{ $data['max_sale_without_auth'] }}" 
                            min="0" step="100"
                            class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2">
@@ -319,7 +378,7 @@
                 </div>
 
                 <div>
-                    <label class="text-sm font-bold text-slate-700">🏷️ Descuento máximo (%)</label>
+                    <label class="text-sm font-semibold text-slate-600">🏷️ Descuento máximo (%)</label>
                     <input type="number" name="max_discount_percent" value="{{ $data['max_discount_percent'] }}" 
                            min="0" max="100"
                            class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2">
@@ -331,10 +390,23 @@
 
         {{-- Backup --}}
         <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-            <h2 class="text-lg font-extrabold mb-4 text-slate-800">💾 Respaldos</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <h2 class="text-lg font-extrabold mb-4 text-slate-600">💾 Respaldos</h2>
+            
+            {{-- Mensajes de estado --}}
+            @if(session('success_backup'))
+                <div class="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-sm">
+                    ✅ {{ session('success_backup') }}
+                </div>
+            @endif
+            @if(session('error_backup'))
+                <div class="mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-sm">
+                    ❌ {{ session('error_backup') }}
+                </div>
+            @endif
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
-                    <label class="text-sm font-bold text-slate-700">🔄 Backup automático</label>
+                    <label class="text-sm font-semibold text-slate-600">🔄 Backup automático</label>
                     <select name="auto_backup_enabled" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2">
                         <option value="0" {{ $data['auto_backup_enabled'] == '0' ? 'selected' : '' }}>❌ Desactivado</option>
                         <option value="1" {{ $data['auto_backup_enabled'] == '1' ? 'selected' : '' }}>✅ Activado</option>
@@ -344,13 +416,64 @@
                 </div>
 
                 <div>
-                    <label class="text-sm font-bold text-slate-700">📅 Retención de backups (días)</label>
+                    <label class="text-sm font-semibold text-slate-600">📅 Retención de backups (días)</label>
                     <input type="number" name="backup_retention_days" value="{{ $data['backup_retention_days'] }}" 
                            min="1" max="365"
                            class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2">
                     <p class="text-xs text-slate-500 mt-1">Eliminar backups más antiguos</p>
                     @error('backup_retention_days') <p class="text-sm text-rose-600 mt-1">{{ $message }}</p> @enderror
                 </div>
+            </div>
+
+            {{-- Botón crear backup --}}
+            <div class="mb-4">
+                <form action="{{ route('panel.config.critica.backup.create') }}" method="POST" class="inline">
+                    @csrf
+                    <button type="submit" 
+                            class="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition">
+                        ➕ Crear backup ahora
+                    </button>
+                </form>
+            </div>
+
+            {{-- Lista de backups --}}
+            <div class="border border-slate-200 rounded-xl overflow-hidden">
+                <div class="bg-slate-50 px-4 py-2 border-b border-slate-200">
+                    <h3 class="text-sm font-semibold text-slate-600">📁 Backups disponibles ({{ count($backups) }})</h3>
+                </div>
+                
+                @if(count($backups) > 0)
+                    <div class="divide-y divide-slate-100 max-h-64 overflow-y-auto">
+                        @foreach($backups as $backup)
+                            <div class="flex items-center justify-between px-4 py-3 hover:bg-slate-50">
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-slate-800 truncate">{{ $backup['filename'] }}</p>
+                                    <p class="text-xs text-slate-500">{{ $backup['size'] }} · {{ $backup['age'] }}</p>
+                                </div>
+                                <div class="flex items-center gap-2 ml-4">
+                                    <a href="{{ route('panel.config.critica.backup.download', $backup['filename']) }}" 
+                                       class="px-3 py-1 text-xs font-bold text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition">
+                                        ⬇️ Descargar
+                                    </a>
+                                    <form action="{{ route('panel.config.critica.backup.delete', $backup['filename']) }}" 
+                                          method="POST" 
+                                          onsubmit="return confirm('¿Eliminar este backup?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" 
+                                                class="px-3 py-1 text-xs font-bold text-rose-600 bg-rose-50 rounded-lg hover:bg-rose-100 transition">
+                                            🗑️ Eliminar
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="px-4 py-6 text-center text-slate-500 text-sm">
+                        No hay backups disponibles. Crea uno nuevo.
+                    </div>
+                @endif
             </div>
         </div>
 

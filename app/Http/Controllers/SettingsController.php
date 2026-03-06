@@ -15,7 +15,7 @@ class SettingsController extends Controller
             'business_close_time' => app_setting('business_close_time', '17:00'),
             
             // Negocio
-            'business_name' => app_setting('business_name', 'Paletería'),
+            'business_name' => app_setting('business_name', 'Creamyx'),
             'business_city' => app_setting('business_city', 'Mexico City'),
             'business_address' => app_setting('business_address', ''),
             'business_lat' => app_setting('business_lat', '19.4326'),
@@ -104,8 +104,6 @@ class SettingsController extends Controller
             'business_name' => 'Nombre negocio',
             'business_city' => 'Ciudad',
             'business_address' => 'Dirección',
-            'business_lat' => 'Latitud',
-            'business_lng' => 'Longitud',
             'business_phone' => 'Teléfono',
             'low_stock_threshold' => 'Umbral stock bajo',
             'allow_negative_stock' => 'Permitir stock negativo',
@@ -118,16 +116,29 @@ class SettingsController extends Controller
             'notify_large_sales' => 'Notificar ventas grandes',
         ];
         
+        // Campos a ignorar en auditoría (coordenadas cambian con mínimas diferencias)
+        $ignoreFields = ['business_lat', 'business_lng'];
+        
         foreach ($validated as $key => $newValue) {
+            // Ignorar campos específicos
+            if (in_array($key, $ignoreFields)) {
+                continue;
+            }
+            
             $oldValue = $oldValues[$key] ?? '';
-            if ((string) $oldValue !== (string) $newValue) {
+            
+            // Normalizar valores para comparación
+            $oldNorm = trim((string) $oldValue);
+            $newNorm = trim((string) $newValue);
+            
+            if ($oldNorm !== $newNorm) {
                 // Formatear valores booleanos
                 $oldDisplay = in_array($key, ['allow_negative_stock', 'show_out_of_stock', 'notify_low_stock', 'notify_large_sales'])
                     ? ($oldValue == '1' ? 'Sí' : 'No')
-                    : ($oldValue ?: '(vacío)');
+                    : ($oldNorm ?: '(vacío)');
                 $newDisplay = in_array($key, ['allow_negative_stock', 'show_out_of_stock', 'notify_low_stock', 'notify_large_sales'])
                     ? ($newValue == '1' ? 'Sí' : 'No')
-                    : ($newValue ?: '(vacío)');
+                    : ($newNorm ?: '(vacío)');
                 
                 $label = $labels[$key] ?? $key;
                 $changes[$label] = $oldDisplay . ' → ' . $newDisplay;

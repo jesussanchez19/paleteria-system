@@ -64,7 +64,10 @@ class CriticalSettingsController extends Controller
             'db_size' => $this->getDatabaseSize(),
         ];
 
-        return view('panel.config-critica', compact('data', 'gerente', 'stats'));
+        // Obtener lista de backups
+        $backups = $this->getBackupsList();
+
+        return view('panel.config-critica', compact('data', 'gerente', 'stats', 'backups'));
     }
 
     private function getDatabaseSize()
@@ -233,7 +236,15 @@ class CriticalSettingsController extends Controller
             'backup_retention_days' => 'Retención backup (días)',
         ];
         
+        // Campos a ignorar en auditoría
+        $ignoreFields = [];
+        
         foreach ($validated as $key => $newValue) {
+            // Ignorar campos de coordenadas
+            if (in_array($key, $ignoreFields)) {
+                continue;
+            }
+            
             $oldValue = $oldValues[$key] ?? '';
             $label = $labels[$key] ?? $key;
             
@@ -326,5 +337,145 @@ class CriticalSettingsController extends Controller
         }
 
         return back()->with('success_gerente', 'Datos del gerente actualizados correctamente.');
+    }
+
+    /**
+     * Obtener lista de backups disponibles
+     */
+    private function getBackupsList(): array
+    {
+        $dir = storage_path('backups');
+        $backups = [];
+
+        if (!is_dir($dir)) {
+            return $backups;
+        }
+
+        $files = glob($dir . DIRECTORY_SEPARATOR . '*.sql');
+        
+        foreach ($files as $file) {
+            $backups[] = [
+                'filename' => basename($file),
+                'size' => $this->formatBytes(filesize($file)),
+                'date' => date('Y-m-d H:i:s', filemtime($file)),
+                'age' => now()->diffForHumans(\Carbon\Carbon::createFromTimestamp(filemtime($file))),
+            ];
+        }
+
+        // Ordenar por fecha descendente (más reciente primero)
+        usort($backups, fn($a, $b) => strtotime($b['date']) - strtotime($a['date']));
+
+        return $backups;
+    }
+
+    private function formatBytes(int $bytes): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB'];
+        $i = 0;
+        while ($bytes >= 1024 && $i < count($units) - 1) {
+            $bytes /= 1024;
+            $i++;
+        }
+        return round($bytes, 2) . ' ' . $units[$i];
+    }
+
+    /**
+     * Crear nuevo backup
+     */
+    public function createBackup()
+    {
+        try {
+            Artisan::call('backup:db');
+            
+            return back()->with('success_backup', 'Backup creado correctamente.');
+        } catch (\Exception $e) {
+            return back()->with('error_backup', 'Error al crear backup: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Descargar backup
+     */
+    public function downloadBackup(string $filename)
+    {
+        // Sanitizar nombre de archivo
+        $filename = basename($filename);
+        $path = storage_path('backups/' . $filename);
+
+        if (!file_exists($path) || !str_ends_with($filename, '.sql')) {
+            abort(404, 'Backup no encontrado.');
+        }
+
+        AuditLog::create([
+            'user_id' => auth()->id(),
+            'action' => 'backup.downloaded',
+            'module' => 'sistema',
+            'entity_type' => 'Backup',
+            'entity_id' => null,
+            'meta' => ['_entity_name' => $filename],
+        ]);
+
+        return response()->download($path);
+    }
+
+    /**
+     * Eliminar backup
+     */
+    public function deleteBackup(string $filename)
+    {
+        // Sanitizar nombre de archivo
+        $filename = basename($filename);
+        $path = storage_path('backups/' . $filename);
+
+        if (!file_exists($path) || !str_ends_with($filename, '.sql')) {
+            return back()->with('error_backup', 'Backup no encontrado.');
+        }
+
+        @unlink($path);
+
+        AuditLog::create([
+            'user_id' => auth()->id(),
+            'action' => 'backup.deleted',
+            'module' => 'sistema',
+            'entity_type' => 'Backup',
+            'entity_id' => null,
+            'meta' => ['_entity_name' => $filename],
+        ]);
+
+        return back()->with('success_backup', 'Backup eliminado correctamente.');
+    }
+
+    public function storeGerente(Request $request)
+    {
+        // Verificar que no exista ya un gerente
+        if (User::where('role', 'gerente')->exists()) {
+            return back()->with('error', 'Ya existe un gerente en el sistema.');
+        }
+
+        $validated = $request->validate([
+            'gerente_name' => ['required', 'string', 'max:255'],
+            'gerente_email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'gerente_password' => ['required', 'min:8', 'confirmed'],
+        ]);
+
+        $gerente = User::create([
+            'name' => $validated['gerente_name'],
+            'email' => $validated['gerente_email'],
+            'password' => Hash::make($validated['gerente_password']),
+            'role' => 'gerente',
+            'is_active' => true,
+        ]);
+
+        // Auditoría
+        \App\Models\AuditLog::create([
+            'user_id' => auth()->id(),
+            'action' => 'gerente.created',
+            'module' => 'usuarios',
+            'entity_type' => 'User',
+            'entity_id' => $gerente->id,
+            'meta' => ['_entity_name' => $gerente->name, 'email' => $gerente->email],
+        ]);
+
+        return back()->with('success_gerente', 'Gerente creado correctamente.');
     }
 }
