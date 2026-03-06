@@ -41,5 +41,5 @@ RUN chown -R www-data:www-data storage bootstrap/cache \
 # Puerto dinámico de Railway
 EXPOSE 8080
 
-# Comando de inicio directo (sin script externo)
-CMD ["sh", "-c", "php artisan config:clear && php artisan migrate --force; php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"]
+# Usar servidor PHP built-in apuntando a public/
+CMD php -S 0.0.0.0:${PORT:-8080} -t public public/index.php
