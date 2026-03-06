@@ -58,8 +58,9 @@ class AuthenticatedSessionController extends Controller
             })->afterResponse();
         }
 
-        // Redirigir siempre según el rol, ignorando URL intended
-        return redirect()->route('redirect.after.login');
+        // Si hay URL intended (ej: QR de reporte), redirigir ahí
+        // Si no, redirigir según rol
+        return redirect()->intended(route('redirect.after.login'));
     }
 
     /**
