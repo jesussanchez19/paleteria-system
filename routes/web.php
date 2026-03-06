@@ -11,6 +11,9 @@ use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\DailyReportController;
 use App\Http\Controllers\DashboardStatsController;
 
+// Health check para Railway (no requiere nada)
+Route::get('/health', fn () => response('ok', 200));
+
 // Público - redirige según cookie de computadora de trabajo
 Route::get('/', function () {
     // Si tiene cookie de computadora de trabajo, va al login
