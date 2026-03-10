@@ -129,13 +129,21 @@
         {{-- Ventas --}}
         <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
             <h2 class="text-lg font-extrabold mb-4 text-slate-800">💰 Ventas</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                     <label class="text-sm font-bold text-slate-700">Tasa de impuesto (%)</label>
                     <input type="number" name="tax_rate" value="{{ $data['tax_rate'] }}" min="0" max="100" step="0.01"
                            class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2">
                     <p class="text-xs text-slate-500 mt-1">IVA u otro impuesto aplicable</p>
                     @error('tax_rate') <p class="text-sm text-rose-600 mt-1">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
+                    <label class="text-sm font-bold text-slate-700">Tiempo mínimo de caja (horas)</label>
+                    <input type="number" name="min_cash_hours" value="{{ $data['min_cash_hours'] }}" min="0" max="24" step="0.5"
+                           class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2">
+                    <p class="text-xs text-slate-500 mt-1">Horas antes de poder cerrar caja (0 = sin límite)</p>
+                    @error('min_cash_hours') <p class="text-sm text-rose-600 mt-1">{{ $message }}</p> @enderror
                 </div>
 
                 <div>

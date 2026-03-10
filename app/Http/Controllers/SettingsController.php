@@ -29,6 +29,7 @@ class SettingsController extends Controller
             // Ventas
             'tax_rate' => app_setting('tax_rate', '16'),
             'receipt_footer' => app_setting('receipt_footer', '¡Gracias por su compra!'),
+            'min_cash_hours' => app_setting('min_cash_hours', '8'),
             
             // Catálogo
             'catalog_message' => app_setting('catalog_message', '¡Bienvenido a nuestra paletería!'),
@@ -65,6 +66,7 @@ class SettingsController extends Controller
             // Ventas
             'tax_rate' => ['required', 'numeric', 'min:0', 'max:100'],
             'receipt_footer' => ['nullable', 'string', 'max:200'],
+            'min_cash_hours' => ['required', 'numeric', 'min:0', 'max:24'],
             
             // Catálogo
             'catalog_message' => ['nullable', 'string', 'max:500'],
@@ -108,6 +110,7 @@ class SettingsController extends Controller
             'low_stock_threshold' => 'Umbral stock bajo',
             'allow_negative_stock' => 'Permitir stock negativo',
             'tax_rate' => 'Tasa impuesto',
+            'min_cash_hours' => 'Tiempo mínimo caja',
             'receipt_footer' => 'Pie de ticket',
             'catalog_message' => 'Mensaje catálogo',
             'show_out_of_stock' => 'Mostrar agotados',

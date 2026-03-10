@@ -38,14 +38,20 @@
                         Esperado: <b class="text-emerald-600">${{ number_format($expectedAmount, 2) }}</b>
                     </span>
                 </div>
-                <form method="POST" action="{{ route('caja.cerrar') }}" class="flex items-center gap-2" onsubmit="return confirm('¿Cerrar caja? Ingresa el dinero real en caja.')">
+                @if($canCloseCash)
+                <form method="POST" action="{{ route('caja.cerrar') }}" onsubmit="return confirm('¿Cerrar caja? Después podrás registrar el dinero real en la sección de Caja.')">
                     @csrf
-                    <input type="number" step="0.01" name="closing_amount" placeholder="Dinero real" required
-                           class="w-32 px-3 py-2 rounded-xl border border-slate-200 text-sm">
                     <button type="submit" class="px-4 py-2 rounded-xl bg-rose-500 text-white font-bold hover:bg-rose-600 transition text-sm">
                         Cerrar caja
                     </button>
                 </form>
+                @else
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-slate-500">
+                        🔒 Cerrar en {{ number_format($hoursRemaining, 1) }}h
+                    </span>
+                </div>
+                @endif
             @else
                 {{-- Caja cerrada --}}
                 <div class="flex items-center gap-3">

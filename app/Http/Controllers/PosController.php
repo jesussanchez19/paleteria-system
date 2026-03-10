@@ -26,6 +26,17 @@ class PosController extends Controller
             $expectedAmount = (float)$openRegister->opening_amount + $salesDuringShift;
         }
 
-        return view('pos.index', compact('products', 'openRegister', 'salesDuringShift', 'expectedAmount'));
+        // Tiempo mínimo de caja en horas
+        $minCashHours = (float) app_setting('min_cash_hours', '8');
+        $canCloseCash = true;
+        $hoursRemaining = 0;
+        
+        if ($openRegister && $minCashHours > 0) {
+            $hoursOpen = $openRegister->opened_at->diffInMinutes(now()) / 60;
+            $canCloseCash = $hoursOpen >= $minCashHours;
+            $hoursRemaining = max(0, $minCashHours - $hoursOpen);
+        }
+
+        return view('pos.index', compact('products', 'openRegister', 'salesDuringShift', 'expectedAmount', 'canCloseCash', 'hoursRemaining'));
     }
 }

@@ -74,14 +74,10 @@ class CashRegisterController extends Controller
     }
 
     /**
-     * Cerrar caja
+     * Cerrar caja (sin monto real, se ingresa después en panel/caja)
      */
     public function close(Request $request)
     {
-        $request->validate([
-            'closing_amount' => 'required|numeric|min:0',
-        ]);
-
         $cash = CashRegister::getOpenRegister();
 
         if (!$cash) {
@@ -99,22 +95,27 @@ class CashRegisterController extends Controller
         
         // Expected = apertura + ventas del turno
         $expected = (float)$cash->opening_amount + $salesDuringShift;
-        
-        // Diferencia = dinero real - dinero esperado
-        $difference = $request->closing_amount - $expected;
 
         $cash->update([
-            'closing_amount' => $request->closing_amount,
             'expected_amount' => $expected,
-            'difference' => $difference,
             'closed_at' => now(),
         ]);
 
         audit_log('cash.closed', 'caja', $cash, [
             'esperado' => '$' . number_format($expected, 2),
-            'dinero_real' => '$' . number_format($request->closing_amount, 2),
-            'diferencia' => '$' . number_format($difference, 2),
+            'nota' => 'Pendiente registrar dinero real',
         ]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Caja cerrada. Registra el dinero real en la sección de Caja.',
+            ]);
+        }
+
+        return redirect()->route('panel.caja.index')
+            ->with('success', 'Caja cerrada. Ahora registra el dinero real contado.');
+    }
 
         if ($request->expectsJson()) {
             return response()->json([
