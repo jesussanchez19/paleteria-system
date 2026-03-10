@@ -8,9 +8,15 @@ use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $products = Product::orderBy('id', 'desc')->get();
+        $query = Product::orderBy('id', 'desc');
+        
+        if ($request->has('tipo') && in_array($request->tipo, ['menudeo', 'mayoreo'])) {
+            $query->where('sale_type', $request->tipo);
+        }
+        
+        $products = $query->get();
         return view('products.index', compact('products'));
     }
 
@@ -24,15 +30,22 @@ class ProductController extends Controller
         $data = $request->validate([
             'name'        => ['required', 'string', 'min:2'],
             'category'    => ['nullable', 'string', 'max:50'],
+            'sale_type'   => ['required', 'in:menudeo,mayoreo'],
+            'pieces_per_package' => ['nullable', 'integer', 'min:1'],
             'description' => ['nullable', 'string', 'max:500'],
             'price'       => ['required', 'numeric', 'min:0'],
             'stock'       => ['required', 'integer', 'min:0'],
             'is_active'   => ['nullable'],
-            'image'       => ['nullable', 'string'], // Ruta de imagen generada
-            'image_file'  => ['nullable', 'image', 'max:2048'], // Imagen subida manualmente
+            'image'       => ['nullable', 'string'],
+            'image_file'  => ['nullable', 'image', 'max:2048'],
         ]);
 
         $data['is_active'] = $request->boolean('is_active');
+        
+        // Limpiar piezas si es menudeo
+        if ($data['sale_type'] === 'menudeo') {
+            $data['pieces_per_package'] = null;
+        }
 
         // Si se sube imagen manualmente, guardarla
         if ($request->hasFile('image_file')) {
@@ -61,6 +74,8 @@ class ProductController extends Controller
         $data = $request->validate([
             'name'        => ['required', 'string', 'min:2'],
             'category'    => ['nullable', 'string', 'max:50'],
+            'sale_type'   => ['required', 'in:menudeo,mayoreo'],
+            'pieces_per_package' => ['nullable', 'integer', 'min:1'],
             'description' => ['nullable', 'string', 'max:500'],
             'price'       => ['required', 'numeric', 'min:0'],
             'is_active'   => ['nullable'],
@@ -69,6 +84,11 @@ class ProductController extends Controller
         ]);
 
         $data['is_active'] = $request->boolean('is_active');
+        
+        // Limpiar piezas si cambia a menudeo
+        if ($data['sale_type'] === 'menudeo') {
+            $data['pieces_per_package'] = null;
+        }
 
         // Si se sube imagen manualmente, guardarla y eliminar anterior
         if ($request->hasFile('image_file')) {

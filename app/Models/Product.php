@@ -15,6 +15,8 @@ class Product extends Model
         'price',
         'stock',
         'category',
+        'sale_type',
+        'pieces_per_package',
         'image',
         'description',
         'is_active',

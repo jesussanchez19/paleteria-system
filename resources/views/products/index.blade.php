@@ -78,12 +78,29 @@
     @if($products->isEmpty())
       <p class="text-slate-600 mt-4">No hay productos aún.</p>
     @else
+      {{-- Filtros por tipo de venta --}}
+      <div class="flex gap-2 mb-4">
+        <a href="{{ route('products.index') }}" 
+           class="px-4 py-2 rounded-xl font-bold transition {{ !request('tipo') ? 'bg-slate-900 text-white' : 'bg-white border border-slate-200 hover:bg-slate-50' }}">
+          Todos
+        </a>
+        <a href="{{ route('products.index', ['tipo' => 'menudeo']) }}" 
+           class="px-4 py-2 rounded-xl font-bold transition {{ request('tipo') == 'menudeo' ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 hover:bg-slate-50' }}">
+          🛒 Menudeo
+        </a>
+        <a href="{{ route('products.index', ['tipo' => 'mayoreo']) }}" 
+           class="px-4 py-2 rounded-xl font-bold transition {{ request('tipo') == 'mayoreo' ? 'bg-purple-600 text-white' : 'bg-white border border-slate-200 hover:bg-slate-50' }}">
+          📦 Mayoreo
+        </a>
+      </div>
+
       <div class="mt-4 overflow-x-auto">
         <table class="min-w-full text-sm">
           <thead>
             <tr class="text-left text-slate-600 border-b">
               <th class="py-2 pr-4">Nombre</th>
               <th class="py-2 pr-4">Categoría</th>
+              <th class="py-2 pr-4">Tipo</th>
               <th class="py-2 pr-4">Precio</th>
               <th class="py-2 pr-4">Stock</th>
               <th class="py-2 pr-4">Activo</th>
@@ -95,6 +112,15 @@
               <tr class="border-b last:border-b-0">
                 <td class="py-3 pr-4 font-bold">{{ $p->name }}</td>
                 <td class="py-3 pr-4">{{ $p->category ?? '—' }}</td>
+                <td class="py-3 pr-4">
+                  <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold
+                    {{ $p->sale_type == 'mayoreo' ? 'bg-purple-50 text-purple-700 border border-purple-200' : 'bg-blue-50 text-blue-700 border border-blue-200' }}">
+                    {{ $p->sale_type == 'mayoreo' ? '📦 Mayoreo' : '🛒 Menudeo' }}
+                    @if($p->sale_type == 'mayoreo' && $p->pieces_per_package)
+                      <span class="ml-1">({{ $p->pieces_per_package }} pzs)</span>
+                    @endif
+                  </span>
+                </td>
                 <td class="py-3 pr-4">${{ number_format($p->price, 2) }}</td>
                 <td class="py-3 pr-4">{{ $p->stock }}</td>
                 <td class="py-3 pr-4">

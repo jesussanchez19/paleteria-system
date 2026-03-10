@@ -11,9 +11,6 @@
   <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
     <form method="POST" action="{{ route('products.store') }}" class="space-y-4" id="product-form" enctype="multipart/form-data">
       @csrf
-      
-      {{-- Campo oculto para la imagen generada --}}
-      <input type="hidden" name="image" id="image-path" value="">
 
       <div>
         <label class="text-sm font-bold text-slate-700">Nombre</label>
@@ -30,10 +27,26 @@
       </div>
 
       <div>
-        <label class="text-sm font-bold text-slate-700">Descripción <span class="text-slate-400 font-normal">(para generar imagen con IA)</span></label>
+        <label class="text-sm font-bold text-slate-700">Tipo de venta</label>
+        <select name="sale_type" id="sale_type" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" required onchange="togglePiecesField()">
+          <option value="menudeo" {{ old('sale_type', 'menudeo') == 'menudeo' ? 'selected' : '' }}>Menudeo</option>
+          <option value="mayoreo" {{ old('sale_type') == 'mayoreo' ? 'selected' : '' }}>Mayoreo</option>
+        </select>
+        @error('sale_type') <p class="text-sm text-rose-600 mt-1">{{ $message }}</p> @enderror
+      </div>
+
+      <div id="pieces_field" class="{{ old('sale_type') == 'mayoreo' ? '' : 'hidden' }}">
+        <label class="text-sm font-bold text-slate-700">Piezas por paquete/caja</label>
+        <input name="pieces_per_package" type="number" min="1" value="{{ old('pieces_per_package') }}"
+               class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" placeholder="Ej. 12, 24, 30...">
+        @error('pieces_per_package') <p class="text-sm text-rose-600 mt-1">{{ $message }}</p> @enderror
+      </div>
+
+      <div>
+        <label class="text-sm font-bold text-slate-700">Descripción</label>
         <textarea name="description" id="product-description" rows="2"
                class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" 
-               placeholder="Ej. paleta de fresa con trozos de fruta natural, color rosa...">{{ old('description') }}</textarea>
+               placeholder="Ej. paleta de fresa con trozos de fruta natural...">{{ old('description') }}</textarea>
         @error('description') <p class="text-sm text-rose-600 mt-1">{{ $message }}</p> @enderror
       </div>
 
@@ -83,27 +96,14 @@
 </div>
 
 <script>
-// Tabs
-function showTab(tab) {
-    const tabUpload = document.getElementById('tab-upload');
-    const tabIa = document.getElementById('tab-ia');
-    const panelUpload = document.getElementById('panel-upload');
-    const panelIa = document.getElementById('panel-ia');
-    
-    if (tab === 'upload') {
-        tabUpload.classList.add('bg-slate-900', 'text-white');
-        tabUpload.classList.remove('bg-white', 'text-slate-700', 'border', 'border-slate-300');
-        tabIa.classList.remove('bg-slate-900', 'text-white');
-        tabIa.classList.add('bg-white', 'text-slate-700', 'border', 'border-slate-300');
-        panelUpload.classList.remove('hidden');
-        panelIa.classList.add('hidden');
+// Mostrar/ocultar campo de piezas
+function togglePiecesField() {
+    const saleType = document.getElementById('sale_type').value;
+    const piecesField = document.getElementById('pieces_field');
+    if (saleType === 'mayoreo') {
+        piecesField.classList.remove('hidden');
     } else {
-        tabIa.classList.add('bg-slate-900', 'text-white');
-        tabIa.classList.remove('bg-white', 'text-slate-700', 'border', 'border-slate-300');
-        tabUpload.classList.remove('bg-slate-900', 'text-white');
-        tabUpload.classList.add('bg-white', 'text-slate-700', 'border', 'border-slate-300');
-        panelIa.classList.remove('hidden');
-        panelUpload.classList.add('hidden');
+        piecesField.classList.add('hidden');
     }
 }
 
@@ -117,66 +117,6 @@ document.getElementById('image-file').addEventListener('change', function(e) {
             document.getElementById('upload-preview-container').classList.remove('hidden');
         };
         reader.readAsDataURL(file);
-        // Limpiar imagen generada si se sube una
-        document.getElementById('image-path').value = '';
-    }
-});
-
-// Generar con IA
-document.getElementById('btn-generate-image').addEventListener('click', async function() {
-    const name = document.getElementById('product-name').value.trim();
-    const category = document.getElementById('product-category').value.trim();
-    const description = document.getElementById('product-description').value.trim();
-    
-    if (!name) {
-        alert('Por favor ingresa el nombre del producto primero');
-        return;
-    }
-    
-    const btn = this;
-    const btnText = document.getElementById('btn-generate-text');
-    const previewContainer = document.getElementById('image-preview-container');
-    const preview = document.getElementById('image-preview');
-    const loading = document.getElementById('image-loading');
-    const imagePath = document.getElementById('image-path');
-    
-    btn.disabled = true;
-    btnText.textContent = '⏳ Generando...';
-    previewContainer.classList.add('hidden');
-    loading.classList.remove('hidden');
-    
-    try {
-        const response = await fetch('{{ route("products.generate-image") }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({ name, category, description })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            preview.src = data.image_url;
-            imagePath.value = data.image_path;
-            previewContainer.classList.remove('hidden');
-            btnText.textContent = '🔄 Regenerar';
-            // Limpiar input de archivo si se genera
-            document.getElementById('image-file').value = '';
-            document.getElementById('upload-preview-container').classList.add('hidden');
-        } else {
-            alert(data.message || 'Error al generar la imagen. Intenta subir una manualmente.');
-            btnText.textContent = '✨ Generar imagen con IA';
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('Error de conexión. Intenta subir una imagen manualmente.');
-        btnText.textContent = '✨ Generar imagen con IA';
-    } finally {
-        loading.classList.add('hidden');
-        btn.disabled = false;
     }
 });
 </script>
