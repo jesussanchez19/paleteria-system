@@ -13,12 +13,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules;
 use App\Services\CloudinaryService;
-use App\Services\WhatsAppService;
-use App\Mail\GerenteVerificationCodeMail;
 
 class CriticalSettingsController extends Controller
 {
@@ -93,25 +90,11 @@ class CriticalSettingsController extends Controller
                 'details' => config('services.groq.model', 'Sin modelo'),
             ],
             [
-                'key' => 'mail',
-                'label' => 'Correo SMTP',
-                'type' => 'Servicio externo',
-                'configured' => !empty(config('mail.default')) && config('mail.default') !== 'log',
-                'details' => strtoupper((string) config('mail.default', 'LOG')),
-            ],
-            [
                 'key' => 'openweather_api',
                 'label' => 'OpenWeather API',
                 'type' => 'API externa',
                 'configured' => !empty(config('services.openweather.key')),
                 'details' => config('services.openweather.city', 'Sin ciudad'),
-            ],
-            [
-                'key' => 'whatsapp',
-                'label' => 'WhatsApp API',
-                'type' => 'API externa',
-                'configured' => !empty(config('services.whatsapp.token')) && !empty(config('services.whatsapp.phone_number_id')),
-                'details' => !empty(config('services.whatsapp.phone_number_id')) ? 'Phone Number ID configurado' : 'Sin configurar',
             ],
             [
                 'key' => 'cloudinary',
@@ -276,11 +259,6 @@ class CriticalSettingsController extends Controller
         } else {
             $results['groq_api'] = ['label' => 'Groq API', 'status' => 'warning', 'message' => 'No configurada'];
         }
-
-        $mailConfigured = !empty(config('mail.default')) && config('mail.default') !== 'log';
-        $results['mail'] = $mailConfigured
-            ? ['label' => 'Correo SMTP', 'status' => 'ok', 'message' => 'Mailer activo: ' . strtoupper((string) config('mail.default'))]
-            : ['label' => 'Correo SMTP', 'status' => 'warning', 'message' => 'MAIL_MAILER sigue en LOG o sin configurar'];
         
         // Test API OpenWeather
         $weatherKey = config('services.openweather.key') ?: app_setting('weather_api_key');
@@ -310,10 +288,6 @@ class CriticalSettingsController extends Controller
         } else {
             $results['cloudinary'] = ['label' => 'Cloudinary', 'status' => 'warning', 'message' => 'No configurada'];
         }
-
-        $results['whatsapp'] = (!empty(config('services.whatsapp.token')) && !empty(config('services.whatsapp.phone_number_id')))
-            ? ['label' => 'WhatsApp API', 'status' => 'ok', 'message' => 'Configuración detectada']
-            : ['label' => 'WhatsApp API', 'status' => 'warning', 'message' => 'Falta token o phone number id'];
 
         // Test Storage público
         $storageReady = is_dir(storage_path('app/public')) && (is_link(public_path('storage')) || is_dir(public_path('storage')));
@@ -436,7 +410,6 @@ class CriticalSettingsController extends Controller
         $rules = [
             'gerente_name' => ['required', 'string', 'max:255'],
             'gerente_email' => ['required', 'email', 'max:255', 'unique:users,email,' . $gerente->id],
-            'gerente_phone' => ['nullable', 'string', 'max:20'],
         ];
 
         // Si se proporciona contraseña, validarla
@@ -446,60 +419,13 @@ class CriticalSettingsController extends Controller
 
         $validated = $request->validate($rules);
 
-        $emailChanged = mb_strtolower($validated['gerente_email']) !== mb_strtolower($gerente->email);
-        $phoneChanged = ($validated['gerente_phone'] ?? null) !== ($gerente->phone ?? null);
-
-        if ($emailChanged) {
-            $request->validate([
-                'gerente_email_verification_code' => ['required', 'digits:6'],
-            ]);
-
-            $emailCacheKey = $this->gerenteEmailVerificationCacheKey($validated['gerente_email']);
-            $emailVerificationData = Cache::get($emailCacheKey);
-
-            if (!$emailVerificationData) {
-                return back()->withInput()->with('error', 'Primero verifica el nuevo correo del gerente.');
-            }
-
-            if (($emailVerificationData['email'] ?? null) !== $validated['gerente_email']) {
-                return back()->withInput()->with('error', 'El correo cambió después de enviar el código. Vuelve a solicitarlo.');
-            }
-
-            if (!Hash::check($request->input('gerente_email_verification_code'), $emailVerificationData['code_hash'] ?? '')) {
-                return back()->withInput()->with('error', 'El código de verificación del correo no es válido.');
-            }
-        }
-
-        if ($phoneChanged && !empty($validated['gerente_phone'])) {
-            $request->validate([
-                'gerente_phone_verification_code' => ['required', 'digits:6'],
-            ]);
-
-            $phoneCacheKey = $this->gerentePhoneVerificationCacheKey($validated['gerente_phone']);
-            $phoneVerificationData = Cache::get($phoneCacheKey);
-
-            if (!$phoneVerificationData) {
-                return back()->withInput()->with('error', 'Primero verifica el nuevo número por WhatsApp.');
-            }
-
-            if (($phoneVerificationData['phone'] ?? null) !== $validated['gerente_phone']) {
-                return back()->withInput()->with('error', 'El número cambió después de enviar el código. Vuelve a solicitarlo.');
-            }
-
-            if (!Hash::check($request->input('gerente_phone_verification_code'), $phoneVerificationData['code_hash'] ?? '')) {
-                return back()->withInput()->with('error', 'El código de verificación de WhatsApp no es válido.');
-            }
-        }
-
         // Capturar valores anteriores
         $oldName = $gerente->name;
         $oldEmail = $gerente->email;
-        $oldPhone = $gerente->phone;
 
         // Actualizar datos
         $gerente->name = $validated['gerente_name'];
         $gerente->email = $validated['gerente_email'];
-        $gerente->phone = $validated['gerente_phone'] ?? null;
 
         $changes = [];
         if ($oldName !== $gerente->name) {
@@ -508,9 +434,6 @@ class CriticalSettingsController extends Controller
         if ($oldEmail !== $gerente->email) {
             $changes['Email'] = $oldEmail . ' → ' . $gerente->email;
         }
-        if (($oldPhone ?? '') !== ($gerente->phone ?? '')) {
-            $changes['Teléfono'] = ($oldPhone ?: '(vacío)') . ' → ' . ($gerente->phone ?: '(vacío)');
-        }
 
         if ($request->filled('gerente_password')) {
             $gerente->password = Hash::make($validated['gerente_password']);
@@ -518,14 +441,6 @@ class CriticalSettingsController extends Controller
         }
 
         $gerente->save();
-
-        if ($emailChanged) {
-            Cache::forget($this->gerenteEmailVerificationCacheKey($validated['gerente_email']));
-        }
-
-        if ($phoneChanged && !empty($validated['gerente_phone'])) {
-            Cache::forget($this->gerentePhoneVerificationCacheKey($validated['gerente_phone']));
-        }
 
         // Auditoría
         if (!empty($changes)) {
@@ -540,82 +455,6 @@ class CriticalSettingsController extends Controller
         }
 
         return back()->with('success_gerente', 'Datos del gerente actualizados correctamente.');
-    }
-
-    public function sendGerenteVerificationCode(Request $request)
-    {
-        $gerente = User::where('role', 'gerente')->first();
-
-        if (config('mail.default') === 'log') {
-            return back()
-                ->withInput()
-                ->with('error', 'El correo no está configurado para envío real. Configura Gmail SMTP antes de enviar el código.');
-        }
-
-        $validated = $request->validate([
-            'gerente_name' => ['required', 'string', 'max:255'],
-            'gerente_email' => ['required', 'email', 'max:255', 'unique:users,email,' . ($gerente?->id ?? 'NULL')],
-        ]);
-
-        $code = (string) random_int(100000, 999999);
-        $cacheKey = $this->gerenteEmailVerificationCacheKey($validated['gerente_email']);
-
-        Cache::put($cacheKey, [
-            'email' => $validated['gerente_email'],
-            'code_hash' => Hash::make($code),
-        ], now()->addMinutes(10));
-
-        try {
-            Mail::to($validated['gerente_email'])->send(
-                new GerenteVerificationCodeMail($validated['gerente_name'], $code)
-            );
-
-            return back()
-                ->withInput()
-                ->with('success_gerente', 'Código enviado al correo del gerente. Vigencia: 10 minutos.');
-        } catch (\Throwable $e) {
-            Cache::forget($cacheKey);
-
-            return back()
-                ->withInput()
-                ->with('error', 'No se pudo enviar el código por correo: ' . $e->getMessage());
-        }
-    }
-
-    public function sendGerentePhoneVerificationCode(Request $request, WhatsAppService $whatsAppService)
-    {
-        if (!WhatsAppService::isConfigured()) {
-            return back()
-                ->withInput()
-                ->with('error', 'WhatsApp no está configurado todavía. Configura el token y el phone number id antes de enviar el código.');
-        }
-
-        $validated = $request->validate([
-            'gerente_name' => ['required', 'string', 'max:255'],
-            'gerente_phone' => ['required', 'string', 'max:20'],
-        ]);
-
-        $code = (string) random_int(100000, 999999);
-        $cacheKey = $this->gerentePhoneVerificationCacheKey($validated['gerente_phone']);
-
-        Cache::put($cacheKey, [
-            'phone' => $validated['gerente_phone'],
-            'code_hash' => Hash::make($code),
-        ], now()->addMinutes(10));
-
-        $message = "Hola {$validated['gerente_name']}, tu código de verificación para gerente en Creamyx es: {$code}. Vigencia: 10 minutos.";
-
-        if (!$whatsAppService->sendText($validated['gerente_phone'], $message)) {
-            Cache::forget($cacheKey);
-
-            return back()
-                ->withInput()
-                ->with('error', 'No se pudo enviar el código por WhatsApp. Revisa la configuración y el formato del número.');
-        }
-
-        return back()
-            ->withInput()
-            ->with('success_gerente', 'Código enviado por WhatsApp. Vigencia: 10 minutos.');
     }
 
     /**
@@ -734,53 +573,16 @@ class CriticalSettingsController extends Controller
         $validated = $request->validate([
             'gerente_name' => ['required', 'string', 'max:255'],
             'gerente_email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'gerente_phone' => ['required', 'string', 'max:20'],
             'gerente_password' => ['required', 'min:8', 'confirmed'],
-            'gerente_email_verification_code' => ['required', 'digits:6'],
-            'gerente_phone_verification_code' => ['required', 'digits:6'],
         ]);
-
-        $emailCacheKey = $this->gerenteEmailVerificationCacheKey($validated['gerente_email']);
-        $phoneCacheKey = $this->gerentePhoneVerificationCacheKey($validated['gerente_phone']);
-        $emailVerificationData = Cache::get($emailCacheKey);
-        $phoneVerificationData = Cache::get($phoneCacheKey);
-
-        if (!$emailVerificationData) {
-            return back()->withInput()->with('error', 'Primero envía el código de verificación al correo del gerente.');
-        }
-
-        if (($emailVerificationData['email'] ?? null) !== $validated['gerente_email']) {
-            return back()->withInput()->with('error', 'El correo cambió después de enviar el código. Vuelve a solicitarlo.');
-        }
-
-        if (!Hash::check($validated['gerente_email_verification_code'], $emailVerificationData['code_hash'] ?? '')) {
-            return back()->withInput()->with('error', 'El código de verificación del correo no es válido.');
-        }
-
-        if (!$phoneVerificationData) {
-            return back()->withInput()->with('error', 'Primero envía el código de verificación por WhatsApp.');
-        }
-
-        if (($phoneVerificationData['phone'] ?? null) !== $validated['gerente_phone']) {
-            return back()->withInput()->with('error', 'El número cambió después de enviar el código. Vuelve a solicitarlo.');
-        }
-
-        if (!Hash::check($validated['gerente_phone_verification_code'], $phoneVerificationData['code_hash'] ?? '')) {
-            return back()->withInput()->with('error', 'El código de verificación de WhatsApp no es válido.');
-        }
 
         $gerente = User::create([
             'name' => $validated['gerente_name'],
             'email' => $validated['gerente_email'],
-            'phone' => $validated['gerente_phone'],
             'password' => Hash::make($validated['gerente_password']),
             'role' => 'gerente',
             'is_active' => true,
-            'email_verified_at' => now(),
         ]);
-
-        Cache::forget($emailCacheKey);
-        Cache::forget($phoneCacheKey);
 
         // Auditoría
         \App\Models\AuditLog::create([
@@ -789,19 +591,9 @@ class CriticalSettingsController extends Controller
             'module' => 'usuarios',
             'entity_type' => 'User',
             'entity_id' => $gerente->id,
-            'meta' => ['_entity_name' => $gerente->name, 'email' => $gerente->email, 'teléfono' => $gerente->phone],
+            'meta' => ['_entity_name' => $gerente->name, 'email' => $gerente->email],
         ]);
 
         return back()->with('success_gerente', 'Gerente creado correctamente.');
-    }
-
-    private function gerenteEmailVerificationCacheKey(string $email): string
-    {
-        return 'gerente_verification_email:' . sha1(mb_strtolower(trim($email)));
-    }
-
-    private function gerentePhoneVerificationCacheKey(string $phone): string
-    {
-        return 'gerente_verification_phone:' . sha1(preg_replace('/\D+/', '', $phone));
     }
 }
