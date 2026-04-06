@@ -30,6 +30,8 @@ class MaintenanceMiddleware
         '/logout',
         '/mantenimiento',
         '/redirect-after-login',
+        '/',
+        '/catalogo',
     ];
 
     public function handle(Request $request, Closure $next): Response
