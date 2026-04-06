@@ -117,21 +117,6 @@ class CashRegisterController extends Controller
             ->with('success', 'Caja cerrada. Ahora registra el dinero real contado.');
     }
 
-        if ($request->expectsJson()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Caja cerrada correctamente.',
-                'expected' => $expected,
-                'difference' => $difference,
-            ]);
-        }
-
-        $msg = 'Caja cerrada. Esperado: $' . number_format($expected, 2) . 
-               ' | Diferencia: $' . number_format($difference, 2);
-        
-        return back()->with('success', $msg);
-    }
-
     /**
      * Registrar dinero real después del cierre automático
      */
