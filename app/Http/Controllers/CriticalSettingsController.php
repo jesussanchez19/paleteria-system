@@ -142,39 +142,53 @@ class CriticalSettingsController extends Controller
             $results['database'] = ['status' => 'error', 'message' => $e->getMessage()];
         }
         
-        // Test API Gemini
-        $aiKey = app_setting('ai_api_key');
+        // Test API Groq
+        $aiKey = config('services.groq.key') ?: app_setting('ai_api_key');
         if ($aiKey) {
             try {
                 $response = \Illuminate\Support\Facades\Http::timeout(5)
-                    ->withHeaders(['Content-Type' => 'application/json'])
-                    ->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={$aiKey}", [
-                        'contents' => [['parts' => [['text' => 'test']]]],
+                    ->withHeaders([
+                        'Authorization' => "Bearer {$aiKey}",
+                        'Content-Type' => 'application/json',
+                    ])
+                    ->post('https://api.groq.com/openai/v1/chat/completions', [
+                        'model' => config('services.groq.model', 'llama-3.3-70b-versatile'),
+                        'messages' => [
+                            ['role' => 'user', 'content' => 'Responde solo OK'],
+                        ],
+                        'max_tokens' => 10,
                     ]);
-                $results['gemini_api'] = $response->successful() 
-                    ? ['status' => 'ok', 'message' => 'API funcionando'] 
+
+                $results['groq_api'] = $response->successful()
+                    ? ['status' => 'ok', 'message' => 'API funcionando']
                     : ['status' => 'error', 'message' => 'Error ' . $response->status()];
             } catch (\Exception $e) {
-                $results['gemini_api'] = ['status' => 'error', 'message' => 'Timeout o error de conexión'];
+                $results['groq_api'] = ['status' => 'error', 'message' => 'Timeout o error de conexión'];
             }
         } else {
-            $results['gemini_api'] = ['status' => 'warning', 'message' => 'No configurada'];
+            $results['groq_api'] = ['status' => 'warning', 'message' => 'No configurada'];
         }
         
-        // Test API Weather
-        $weatherKey = app_setting('weather_api_key');
+        // Test API OpenWeather
+        $weatherKey = config('services.openweather.key') ?: app_setting('weather_api_key');
         if ($weatherKey) {
             try {
                 $response = \Illuminate\Support\Facades\Http::timeout(5)
-                    ->get("https://api.openweathermap.org/data/2.5/weather?q=Mexico&appid={$weatherKey}");
-                $results['weather_api'] = $response->successful() 
-                    ? ['status' => 'ok', 'message' => 'API funcionando'] 
+                    ->get('https://api.openweathermap.org/data/2.5/weather', [
+                        'q' => config('services.openweather.city', 'Culiacan'),
+                        'appid' => $weatherKey,
+                        'units' => config('services.openweather.units', 'metric'),
+                        'lang' => config('services.openweather.lang', 'es'),
+                    ]);
+
+                $results['openweather_api'] = $response->successful()
+                    ? ['status' => 'ok', 'message' => 'API funcionando']
                     : ['status' => 'error', 'message' => 'Error ' . $response->status()];
             } catch (\Exception $e) {
-                $results['weather_api'] = ['status' => 'error', 'message' => 'Timeout o error de conexión'];
+                $results['openweather_api'] = ['status' => 'error', 'message' => 'Timeout o error de conexión'];
             }
         } else {
-            $results['weather_api'] = ['status' => 'warning', 'message' => 'No configurada'];
+            $results['openweather_api'] = ['status' => 'warning', 'message' => 'No configurada'];
         }
 
         return back()->with('connection_results', $results);
