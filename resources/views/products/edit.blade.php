@@ -64,6 +64,10 @@
         <div class="mb-4 p-3 bg-white rounded-lg border border-slate-200">
           <p class="text-xs text-slate-500 mb-2">Imagen actual:</p>
           <img src="{{ $product->image_url }}" alt="Imagen actual" class="w-32 h-32 object-cover rounded-lg mx-auto">
+          <button type="button" onclick="eliminarImagen()" 
+                  class="mt-3 w-full px-3 py-2 text-sm font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition">
+            🗑️ Eliminar imagen
+          </button>
         </div>
         @endif
         <input type="file" name="image_file" id="image-file" accept="image/*"
@@ -126,5 +130,27 @@ document.getElementById('image-file').addEventListener('change', function(e) {
         reader.readAsDataURL(file);
     }
 });
+
+// Eliminar imagen del producto
+function eliminarImagen() {
+    if (!confirm('¿Eliminar la imagen de este producto?')) return;
+    
+    fetch('{{ route("products.delete-image", $product) }}', {
+        method: 'DELETE',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error al eliminar la imagen');
+        }
+    })
+    .catch(() => alert('Error al eliminar la imagen'));
+}
 </script>
 @endsection

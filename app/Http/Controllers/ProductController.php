@@ -155,6 +155,21 @@ class ProductController extends Controller
     }
 
     /**
+     * Eliminar solo la imagen del producto (API)
+     */
+    public function deleteImage(Product $product)
+    {
+        $this->deleteProductImage($product);
+        
+        $product->update([
+            'image' => null,
+            'cloudinary_public_id' => null,
+        ]);
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
      * Subir imagen a Cloudinary o storage local
      */
     private function uploadImage($file): array

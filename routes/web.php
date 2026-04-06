@@ -181,6 +181,7 @@ Route::middleware(['auth', 'role:gerente'])->group(function () {
     Route::get('/products/{product}/edit', [ProductController::class, 'edit'])->name('products.edit');
     Route::put('/products/{product}', [ProductController::class, 'update'])->name('products.update');
     Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
+    Route::delete('/products/{product}/image', [ProductController::class, 'deleteImage'])->name('products.delete-image');
 
     // Entrada de mercancía (inventario)
     Route::post('/inventory/entry', [InventoryController::class, 'entry'])->name('inventory.entry');
