@@ -470,7 +470,13 @@
     </form>
 
     <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-        <h2 class="text-lg font-extrabold mb-4 text-slate-600">🗂️ Gestión de Backups</h2>
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-extrabold text-slate-600">🗂️ Gestión de Backups</h2>
+            <a href="{{ route('panel.backups') }}" 
+               class="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl font-semibold hover:bg-slate-200 transition text-sm">
+                📁 Ver todos los backups →
+            </a>
+        </div>
 
         {{-- Botón crear backup --}}
         <div class="mb-4">

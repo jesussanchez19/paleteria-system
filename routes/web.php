@@ -195,13 +195,25 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/panel/config-critica/test-connections', [\App\Http\Controllers\CriticalSettingsController::class, 'testConnections'])
         ->name('panel.config.critica.test-connections');
     
-    // Rutas de backups
+    // Rutas de backups (legacy - config critica)
     Route::post('/panel/config-critica/backup/create', [\App\Http\Controllers\CriticalSettingsController::class, 'createBackup'])
         ->name('panel.config.critica.backup.create');
     Route::get('/panel/config-critica/backup/download/{filename}', [\App\Http\Controllers\CriticalSettingsController::class, 'downloadBackup'])
         ->name('panel.config.critica.backup.download');
     Route::delete('/panel/config-critica/backup/{filename}', [\App\Http\Controllers\CriticalSettingsController::class, 'deleteBackup'])
         ->name('panel.config.critica.backup.delete');
+    
+    // Página dedicada de backups
+    Route::get('/panel/backups', [\App\Http\Controllers\BackupController::class, 'index'])
+        ->name('panel.backups');
+    Route::post('/panel/backups/create', [\App\Http\Controllers\BackupController::class, 'create'])
+        ->name('panel.backups.create');
+    Route::get('/panel/backups/download/{filename}', [\App\Http\Controllers\BackupController::class, 'download'])
+        ->name('panel.backups.download');
+    Route::delete('/panel/backups/{filename}', [\App\Http\Controllers\BackupController::class, 'delete'])
+        ->name('panel.backups.delete');
+    Route::post('/panel/backups/config', [\App\Http\Controllers\BackupController::class, 'saveConfig'])
+        ->name('panel.backups.config');
 });
 
 Route::middleware(['auth', 'role:gerente'])->group(function () {
