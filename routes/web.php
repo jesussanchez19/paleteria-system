@@ -15,6 +15,17 @@ use App\Services\CloudinaryService;
 // Health check para Railway (no requiere nada)
 Route::get('/health', fn () => response('ok', 200));
 
+// Diagnóstico de mantenimiento (temporal)
+Route::get('/maintenance-check', function () {
+    $value = app_setting('maintenance_mode', 'NO_EXISTE');
+    $allSettings = \App\Models\Setting::all()->pluck('value', 'key')->toArray();
+    return response()->json([
+        'maintenance_mode' => $value,
+        'is_active' => $value === '1',
+        'all_settings' => $allSettings,
+    ]);
+})->withoutMiddleware(\App\Http\Middleware\MaintenanceMiddleware::class);
+
 // Página de mantenimiento (accesible siempre)
 Route::get('/mantenimiento', fn () => response()->view('maintenance', [], 503))->name('mantenimiento');
 
