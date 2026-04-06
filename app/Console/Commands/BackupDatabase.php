@@ -14,7 +14,7 @@ class BackupDatabase extends Command
 
     public function handle(): int
     {
-        $dir = storage_path('backups');
+        $dir = $this->getBackupsPath();
         if (!File::exists($dir)) {
             File::makeDirectory($dir, 0755, true);
         }
@@ -23,7 +23,8 @@ class BackupDatabase extends Command
         $defaultPath = $dir . DIRECTORY_SEPARATOR . $filename;
         $path = $this->option('path') ?: $defaultPath;
 
-        $this->info('Generando backup...');
+        $this->info('Generando backup en: ' . $dir);
+        $this->info('(Railway Volume: ' . (env('RAILWAY_VOLUME_MOUNT_PATH') ? 'Sí' : 'No') . ')');
 
         try {
             $sql = $this->generateBackupSQL();
@@ -47,6 +48,20 @@ class BackupDatabase extends Command
         }
     }
 
+    /**
+     * Obtener ruta de backups (Railway Volume o storage local)
+     */
+    private function getBackupsPath(): string
+    {
+        $volumePath = env('RAILWAY_VOLUME_MOUNT_PATH');
+        
+        if ($volumePath && is_dir($volumePath)) {
+            return rtrim($volumePath, '/') . '/backups';
+        }
+        
+        return storage_path('backups');
+    }
+
     private function generateBackupSQL(): string
     {
         $sql = "-- Backup generado el " . now()->format('Y-m-d H:i:s') . "\n";
@@ -63,6 +78,7 @@ class BackupDatabase extends Command
             'cash_registers',
             'audit_logs',
             'weather_snapshots',
+            'backup_records',
         ];
 
         foreach ($tables as $table) {

@@ -8,9 +8,30 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use App\Models\AuditLog;
 use App\Models\Setting;
+use App\Models\BackupRecord;
 
 class BackupController extends Controller
 {
+    /**
+     * Obtener ruta de backups (Railway Volume o storage local)
+     */
+    private function getBackupsPath(): string
+    {
+        // Railway Volume tiene prioridad si está configurado
+        $volumePath = env('RAILWAY_VOLUME_MOUNT_PATH');
+        
+        if ($volumePath && is_dir($volumePath)) {
+            $backupDir = rtrim($volumePath, '/') . '/backups';
+            if (!is_dir($backupDir)) {
+                @mkdir($backupDir, 0755, true);
+            }
+            return $backupDir;
+        }
+        
+        // Fallback a storage local
+        return storage_path('backups');
+    }
+
     /**
      * Mostrar página de gestión de backups
      */
@@ -20,23 +41,39 @@ class BackupController extends Controller
         $totalSize = $this->calculateTotalSize();
         $autoBackupEnabled = app_setting('auto_backup_enabled', '0') === '1';
         $retentionDays = (int) app_setting('backup_retention_days', '30');
+        $backupPath = app_setting('backup_local_path', 'D:\\Backups\\Paleteria');
+        
+        // Info de Railway Volume
+        $volumePath = env('RAILWAY_VOLUME_MOUNT_PATH');
+        $usingVolume = $volumePath && is_dir($volumePath);
+        $serverBackupPath = $this->getBackupsPath();
+        
+        // Historial de backups de la base de datos
+        $backupHistory = BackupRecord::with('creator')
+            ->orderBy('created_at', 'desc')
+            ->limit(50)
+            ->get();
 
         return view('panel.backups', compact(
             'backups',
             'totalSize',
             'autoBackupEnabled',
-            'retentionDays'
+            'retentionDays',
+            'backupPath',
+            'backupHistory',
+            'usingVolume',
+            'serverBackupPath'
         ));
     }
 
     /**
-     * Crear nuevo backup
+     * Crear nuevo backup y descargarlo automáticamente
      */
     public function create()
     {
         try {
-            // Asegurar que el directorio existe
-            $dir = storage_path('backups');
+            // Usar Railway Volume si está disponible
+            $dir = $this->getBackupsPath();
             if (!is_dir($dir)) {
                 mkdir($dir, 0755, true);
             }
@@ -52,13 +89,36 @@ class BackupController extends Controller
             $files = glob($dir . DIRECTORY_SEPARATOR . '*.sql');
             if (!empty($files)) {
                 usort($files, fn($a, $b) => filemtime($b) - filemtime($a));
-                $latestFile = basename($files[0]);
-                $size = $this->formatBytes(filesize($files[0]));
+                $latestFile = $files[0];
+                $filename = basename($latestFile);
+                $fileSize = filesize($latestFile);
                 
-                return back()->with('success', "Backup creado exitosamente: {$latestFile} ({$size})");
+                // Guardar registro en base de datos (historial permanente)
+                $record = BackupRecord::create([
+                    'filename' => $filename,
+                    'size_bytes' => $fileSize,
+                    'created_by' => auth()->id(),
+                    'downloaded' => true, // Se marca como descargado porque se descarga automáticamente
+                    'downloaded_at' => now(),
+                ]);
+                
+                // Registrar en auditoría
+                AuditLog::create([
+                    'user_id' => auth()->id(),
+                    'action' => 'backup.created',
+                    'module' => 'sistema',
+                    'entity_type' => 'Backup',
+                    'entity_id' => $record->id,
+                    'meta' => ['_entity_name' => $filename, 'size' => $fileSize],
+                ]);
+                
+                // Descargar automáticamente
+                return response()->download($latestFile, $filename, [
+                    'Content-Type' => 'application/sql',
+                ])->deleteFileAfterSend(false);
             }
             
-            return back()->with('success', 'Backup creado correctamente.');
+            return back()->with('error', 'El backup se creó pero no se encontró el archivo.');
         } catch (\Exception $e) {
             Log::error('Error creando backup: ' . $e->getMessage());
             return back()->with('error', 'Error al crear backup: ' . $e->getMessage());
@@ -66,15 +126,15 @@ class BackupController extends Controller
     }
 
     /**
-     * Descargar backup
+     * Descargar backup existente
      */
     public function download(string $filename)
     {
         $filename = basename($filename);
-        $path = storage_path('backups/' . $filename);
+        $path = $this->getBackupsPath() . '/' . $filename;
 
         if (!file_exists($path) || !str_ends_with($filename, '.sql')) {
-            abort(404, 'Backup no encontrado.');
+            abort(404, 'Backup no encontrado en el servidor. Puede que ya se haya eliminado con un deploy.');
         }
 
         AuditLog::create([
@@ -95,7 +155,7 @@ class BackupController extends Controller
     public function delete(string $filename)
     {
         $filename = basename($filename);
-        $path = storage_path('backups/' . $filename);
+        $path = $this->getBackupsPath() . '/' . $filename;
 
         if (!file_exists($path) || !str_ends_with($filename, '.sql')) {
             return back()->with('error', 'Backup no encontrado.');
@@ -124,10 +184,12 @@ class BackupController extends Controller
         $data = $request->validate([
             'auto_backup_enabled' => ['required', 'boolean'],
             'backup_retention_days' => ['required', 'integer', 'min:1', 'max:365'],
+            'backup_local_path' => ['nullable', 'string', 'max:500'],
         ]);
 
         Setting::set('auto_backup_enabled', $data['auto_backup_enabled'] ? '1' : '0');
         Setting::set('backup_retention_days', (string) $data['backup_retention_days']);
+        Setting::set('backup_local_path', $data['backup_local_path'] ?? 'D:\\Backups\\Paleteria');
 
         AuditLog::create([
             'user_id' => auth()->id(),
@@ -139,6 +201,7 @@ class BackupController extends Controller
                 '_entity_name' => 'Configuración de backups',
                 'auto_backup' => $data['auto_backup_enabled'] ? 'Activado' : 'Desactivado',
                 'retention' => $data['backup_retention_days'] . ' días',
+                'ruta_local' => $data['backup_local_path'] ?? 'No configurada',
             ],
         ]);
 
@@ -150,7 +213,7 @@ class BackupController extends Controller
      */
     private function getBackupsList(): array
     {
-        $dir = storage_path('backups');
+        $dir = $this->getBackupsPath();
         $backups = [];
 
         if (!is_dir($dir)) {
@@ -186,7 +249,7 @@ class BackupController extends Controller
      */
     private function calculateTotalSize(): string
     {
-        $dir = storage_path('backups');
+        $dir = $this->getBackupsPath();
         $totalBytes = 0;
 
         if (is_dir($dir)) {
