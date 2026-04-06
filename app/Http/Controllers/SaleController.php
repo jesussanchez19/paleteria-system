@@ -28,7 +28,17 @@ class SaleController extends Controller
     }
     public function store(Request $request)
     {
-        // ...existing code...
+        // Verificar si las ventas están habilitadas
+        if (app_setting('sales_enabled', '1') !== '1') {
+            if ($request->expectsJson() || $request->isJson() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Las ventas están deshabilitadas temporalmente por el administrador.',
+                ], 403);
+            }
+            return back()->with('error', 'Las ventas están deshabilitadas temporalmente por el administrador.');
+        }
+
         // Permitir items_json desde el formulario oculto
         if ($request->filled('items_json') && !$request->filled('items')) {
             $decoded = json_decode($request->input('items_json'), true);

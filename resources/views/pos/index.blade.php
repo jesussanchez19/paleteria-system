@@ -124,15 +124,22 @@
                 </div>
             </div>
 
+            @if(!$salesEnabled)
+            <div class="mt-4 p-3 bg-rose-100 border border-rose-300 rounded-xl text-center">
+                <p class="text-rose-700 font-semibold">⚠️ Ventas deshabilitadas</p>
+                <p class="text-rose-600 text-sm">El administrador ha pausado las ventas temporalmente.</p>
+            </div>
+            @endif
+
             <button
                 type="button"
                 class="mt-5 w-full bg-yellow-300 hover:bg-yellow-400 active:bg-yellow-500 text-slate-900 font-extrabold py-4 px-4 rounded-xl shadow-md hover:shadow-lg transition disabled:bg-yellow-200 disabled:cursor-not-allowed disabled:shadow-md text-lg"
                 style="background-color: #fcd34d; color: #1f2937; padding: 1rem 1rem; font-weight: 700; border-radius: 0.75rem; width: 100%; border: none; cursor: pointer; font-size: 1.125rem;"
                 id="btn-cobrar"
                 onclick="checkout()"
-                disabled
+                {{ !$salesEnabled ? 'disabled title="Ventas deshabilitadas"' : 'disabled' }}
             >
-                Cobrar
+                {{ !$salesEnabled ? '🚫 Ventas pausadas' : 'Cobrar' }}
             </button>
             <div id="ticket-link-div" class="mt-6 flex justify-center"></div>
         </div>
@@ -143,6 +150,7 @@
 
 <script>
     const cart = new Map();
+    const salesEnabled = {{ $salesEnabled ? 'true' : 'false' }};
 
     function money(n) {
         const v = Math.round(n * 100) / 100;
@@ -190,7 +198,7 @@
         document.getElementById('subtotal').innerText = money(t.subtotal);
         document.getElementById('total').innerText = money(t.total);
 
-        document.getElementById('btn-cobrar').disabled = cart.size === 0;
+        document.getElementById('btn-cobrar').disabled = !salesEnabled || cart.size === 0;
     }
 
     function incrementQty(id) {
@@ -304,6 +312,11 @@
     const cajaAbierta = {{ $openRegister ? 'true' : 'false' }};
 
     function checkout() {
+        if (!salesEnabled) {
+            alert('Las ventas están deshabilitadas temporalmente por el administrador.');
+            return;
+        }
+
         if (!cajaAbierta) {
             alert('Debes abrir la caja antes de poder cobrar.');
             return;

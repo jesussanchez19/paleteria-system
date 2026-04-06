@@ -37,6 +37,9 @@ class PosController extends Controller
             $hoursRemaining = max(0, $minCashHours - $hoursOpen);
         }
 
-        return view('pos.index', compact('products', 'openRegister', 'salesDuringShift', 'expectedAmount', 'canCloseCash', 'hoursRemaining'));
+        // Verificar si las ventas están habilitadas
+        $salesEnabled = app_setting('sales_enabled', '1') === '1';
+
+        return view('pos.index', compact('products', 'openRegister', 'salesDuringShift', 'expectedAmount', 'canCloseCash', 'hoursRemaining', 'salesEnabled'));
     }
 }
