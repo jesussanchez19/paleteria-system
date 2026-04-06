@@ -26,6 +26,10 @@ class MaintenanceMiddleware
         '/health',
         '/up',
         '/maintenance-check',
+        '/login',
+        '/logout',
+        '/mantenimiento',
+        '/redirect-after-login',
     ];
 
     public function handle(Request $request, Closure $next): Response
@@ -37,8 +41,9 @@ class MaintenanceMiddleware
             return $next($request);
         }
 
-        // Permitir paths excluidos (health checks, etc.)
-        if (in_array($request->getPathInfo(), $this->exceptPaths)) {
+        // Permitir paths excluidos (health checks, auth, etc.)
+        $path = $request->getPathInfo();
+        if (in_array($path, $this->exceptPaths)) {
             return $next($request);
         }
 
