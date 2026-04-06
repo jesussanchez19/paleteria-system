@@ -15,6 +15,9 @@ use App\Services\CloudinaryService;
 // Health check para Railway (no requiere nada)
 Route::get('/health', fn () => response('ok', 200));
 
+// Página de mantenimiento (accesible siempre)
+Route::get('/mantenimiento', fn () => response()->view('maintenance', [], 503))->name('mantenimiento');
+
 // Diagnóstico de Cloudinary (temporal - eliminar después)
 Route::get('/cloudinary-check', function () {
     $configUrl = config('cloudinary.cloud_url');

@@ -14,6 +14,12 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
+            'maintenance' => \App\Http\Middleware\MaintenanceMiddleware::class,
+        ]);
+        
+        // Aplicar middleware de mantenimiento a todas las rutas web
+        $middleware->web(append: [
+            \App\Http\Middleware\MaintenanceMiddleware::class,
         ]);
         
         // Confiar en proxies como ngrok
