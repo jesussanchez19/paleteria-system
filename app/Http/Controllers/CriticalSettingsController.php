@@ -446,6 +446,51 @@ class CriticalSettingsController extends Controller
 
         $validated = $request->validate($rules);
 
+        $emailChanged = mb_strtolower($validated['gerente_email']) !== mb_strtolower($gerente->email);
+        $phoneChanged = ($validated['gerente_phone'] ?? null) !== ($gerente->phone ?? null);
+
+        if ($emailChanged) {
+            $request->validate([
+                'gerente_email_verification_code' => ['required', 'digits:6'],
+            ]);
+
+            $emailCacheKey = $this->gerenteEmailVerificationCacheKey($validated['gerente_email']);
+            $emailVerificationData = Cache::get($emailCacheKey);
+
+            if (!$emailVerificationData) {
+                return back()->withInput()->with('error', 'Primero verifica el nuevo correo del gerente.');
+            }
+
+            if (($emailVerificationData['email'] ?? null) !== $validated['gerente_email']) {
+                return back()->withInput()->with('error', 'El correo cambió después de enviar el código. Vuelve a solicitarlo.');
+            }
+
+            if (!Hash::check($request->input('gerente_email_verification_code'), $emailVerificationData['code_hash'] ?? '')) {
+                return back()->withInput()->with('error', 'El código de verificación del correo no es válido.');
+            }
+        }
+
+        if ($phoneChanged && !empty($validated['gerente_phone'])) {
+            $request->validate([
+                'gerente_phone_verification_code' => ['required', 'digits:6'],
+            ]);
+
+            $phoneCacheKey = $this->gerentePhoneVerificationCacheKey($validated['gerente_phone']);
+            $phoneVerificationData = Cache::get($phoneCacheKey);
+
+            if (!$phoneVerificationData) {
+                return back()->withInput()->with('error', 'Primero verifica el nuevo número por WhatsApp.');
+            }
+
+            if (($phoneVerificationData['phone'] ?? null) !== $validated['gerente_phone']) {
+                return back()->withInput()->with('error', 'El número cambió después de enviar el código. Vuelve a solicitarlo.');
+            }
+
+            if (!Hash::check($request->input('gerente_phone_verification_code'), $phoneVerificationData['code_hash'] ?? '')) {
+                return back()->withInput()->with('error', 'El código de verificación de WhatsApp no es válido.');
+            }
+        }
+
         // Capturar valores anteriores
         $oldName = $gerente->name;
         $oldEmail = $gerente->email;
@@ -474,6 +519,14 @@ class CriticalSettingsController extends Controller
 
         $gerente->save();
 
+        if ($emailChanged) {
+            Cache::forget($this->gerenteEmailVerificationCacheKey($validated['gerente_email']));
+        }
+
+        if ($phoneChanged && !empty($validated['gerente_phone'])) {
+            Cache::forget($this->gerentePhoneVerificationCacheKey($validated['gerente_phone']));
+        }
+
         // Auditoría
         if (!empty($changes)) {
             \App\Models\AuditLog::create([
@@ -491,9 +544,7 @@ class CriticalSettingsController extends Controller
 
     public function sendGerenteVerificationCode(Request $request)
     {
-        if (User::where('role', 'gerente')->exists()) {
-            return back()->with('error', 'Ya existe un gerente en el sistema.')->withInput();
-        }
+        $gerente = User::where('role', 'gerente')->first();
 
         if (config('mail.default') === 'log') {
             return back()
@@ -503,7 +554,7 @@ class CriticalSettingsController extends Controller
 
         $validated = $request->validate([
             'gerente_name' => ['required', 'string', 'max:255'],
-            'gerente_email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'gerente_email' => ['required', 'email', 'max:255', 'unique:users,email,' . ($gerente?->id ?? 'NULL')],
         ]);
 
         $code = (string) random_int(100000, 999999);
@@ -533,10 +584,6 @@ class CriticalSettingsController extends Controller
 
     public function sendGerentePhoneVerificationCode(Request $request, WhatsAppService $whatsAppService)
     {
-        if (User::where('role', 'gerente')->exists()) {
-            return back()->with('error', 'Ya existe un gerente en el sistema.')->withInput();
-        }
-
         if (!WhatsAppService::isConfigured()) {
             return back()
                 ->withInput()

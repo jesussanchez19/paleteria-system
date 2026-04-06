@@ -246,6 +246,13 @@
                     <label class="text-sm font-semibold text-slate-600">📧 Email</label>
                     <input type="email" name="gerente_email" value="{{ old('gerente_email', $gerente->email) }}"
                            class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" required>
+                    <button type="submit"
+                            formaction="{{ route('panel.config.critica.gerente.send-code') }}"
+                            formnovalidate
+                            class="mt-2 px-3 py-2 rounded-xl bg-sky-600 text-white text-sm font-bold hover:bg-sky-700 transition">
+                        Verificar correo
+                    </button>
+                    <p class="text-xs text-slate-500 mt-1">Si cambias el correo, primero envía un código de verificación</p>
                     @error('gerente_email') <p class="text-sm text-rose-600 mt-1">{{ $message }}</p> @enderror
                 </div>
 
@@ -254,8 +261,32 @@
                     <input type="text" name="gerente_phone" value="{{ old('gerente_phone', $gerente->phone) }}"
                            class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
                            placeholder="Ej. 6671234567">
-                    <p class="text-xs text-slate-500 mt-1">Se usará para alertas por WhatsApp</p>
+                    <button type="submit"
+                            formaction="{{ route('panel.config.critica.gerente.send-phone-code') }}"
+                            formnovalidate
+                            class="mt-2 px-3 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition">
+                        Verificar WhatsApp
+                    </button>
+                    <p class="text-xs text-slate-500 mt-1">Si cambias el número, primero envía un código de verificación por WhatsApp</p>
                     @error('gerente_phone') <p class="text-sm text-rose-600 mt-1">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
+                    <label class="text-sm font-semibold text-slate-600">🔢 Código de correo</label>
+                    <input type="text" name="gerente_email_verification_code" value="{{ old('gerente_email_verification_code') }}"
+                           class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
+                           placeholder="Solo si cambias el correo">
+                    <p class="text-xs text-slate-500 mt-1">Obligatorio únicamente cuando cambies el correo</p>
+                    @error('gerente_email_verification_code') <p class="text-sm text-rose-600 mt-1">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
+                    <label class="text-sm font-semibold text-slate-600">🔢 Código de WhatsApp</label>
+                    <input type="text" name="gerente_phone_verification_code" value="{{ old('gerente_phone_verification_code') }}"
+                           class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
+                           placeholder="Solo si cambias el número">
+                    <p class="text-xs text-slate-500 mt-1">Obligatorio únicamente cuando cambies el número</p>
+                    @error('gerente_phone_verification_code') <p class="text-sm text-rose-600 mt-1">{{ $message }}</p> @enderror
                 </div>
 
                 <div>
