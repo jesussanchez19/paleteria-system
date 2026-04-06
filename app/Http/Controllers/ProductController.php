@@ -187,22 +187,17 @@ class ProductController extends Controller
     private function uploadImage($file): array
     {
         Log::info('uploadImage called, checking Cloudinary config...');
-        Log::info('CLOUDINARY_URL exists: ' . (config('cloudinary.cloud_url') ? 'YES' : 'NO'));
         
         // Intentar subir a Cloudinary si está configurado
         if (CloudinaryService::isConfigured()) {
-            try {
-                Log::info('Cloudinary is configured, attempting upload...');
-                $result = $this->cloudinary->uploadImage($file, 'products');
-                Log::info('Cloudinary upload success: ' . $result['url']);
-                return $result;
-            } catch (\Exception $e) {
-                Log::error('Cloudinary upload failed: ' . $e->getMessage());
-                // Continúa al fallback local
-            }
-        } else {
-            Log::warning('Cloudinary NOT configured, using local storage');
+            Log::info('Cloudinary is configured, attempting upload...');
+            // NO usar try-catch aquí para ver el error real
+            $result = $this->cloudinary->uploadImage($file, 'products');
+            Log::info('Cloudinary upload success: ' . $result['url']);
+            return $result;
         }
+        
+        Log::warning('Cloudinary NOT configured, using local storage');
         
         // Fallback a storage local
         $path = $file->store('products', 'public');
