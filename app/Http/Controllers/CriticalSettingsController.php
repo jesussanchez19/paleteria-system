@@ -12,7 +12,9 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules;
+use App\Services\CloudinaryService;
 
 class CriticalSettingsController extends Controller
 {
@@ -67,7 +69,45 @@ class CriticalSettingsController extends Controller
         // Obtener lista de backups
         $backups = $this->getBackupsList();
 
-        return view('panel.config-critica', compact('data', 'gerente', 'stats', 'backups'));
+        $systemConnections = [
+            [
+                'key' => 'database',
+                'label' => 'Base de datos',
+                'type' => 'Interna',
+                'configured' => !empty(config('database.default')),
+                'details' => strtoupper((string) config('database.default', 'N/A')),
+            ],
+            [
+                'key' => 'groq_api',
+                'label' => 'Groq API',
+                'type' => 'API externa',
+                'configured' => !empty(config('services.groq.key')),
+                'details' => config('services.groq.model', 'Sin modelo'),
+            ],
+            [
+                'key' => 'openweather_api',
+                'label' => 'OpenWeather API',
+                'type' => 'API externa',
+                'configured' => !empty(config('services.openweather.key')),
+                'details' => config('services.openweather.city', 'Sin ciudad'),
+            ],
+            [
+                'key' => 'cloudinary',
+                'label' => 'Cloudinary',
+                'type' => 'Almacenamiento externo',
+                'configured' => CloudinaryService::isConfigured(),
+                'details' => CloudinaryService::isConfigured() ? 'Configurado por CLOUDINARY_URL' : 'Sin configurar',
+            ],
+            [
+                'key' => 'public_storage',
+                'label' => 'Storage público',
+                'type' => 'Filesystem',
+                'configured' => is_dir(storage_path('app/public')),
+                'details' => is_link(public_path('storage')) || is_dir(public_path('storage')) ? 'Link o carpeta disponible' : 'Sin enlace público',
+            ],
+        ];
+
+        return view('panel.config-critica', compact('data', 'gerente', 'stats', 'backups', 'systemConnections'));
     }
 
     private function getDatabaseSize()
@@ -137,9 +177,9 @@ class CriticalSettingsController extends Controller
         // Test DB
         try {
             DB::connection()->getPdo();
-            $results['database'] = ['status' => 'ok', 'message' => 'Conexión exitosa'];
+            $results['database'] = ['label' => 'Base de datos', 'status' => 'ok', 'message' => 'Conexión exitosa'];
         } catch (\Exception $e) {
-            $results['database'] = ['status' => 'error', 'message' => $e->getMessage()];
+            $results['database'] = ['label' => 'Base de datos', 'status' => 'error', 'message' => $e->getMessage()];
         }
         
         // Test API Groq
@@ -160,13 +200,13 @@ class CriticalSettingsController extends Controller
                     ]);
 
                 $results['groq_api'] = $response->successful()
-                    ? ['status' => 'ok', 'message' => 'API funcionando']
-                    : ['status' => 'error', 'message' => 'Error ' . $response->status()];
+                    ? ['label' => 'Groq API', 'status' => 'ok', 'message' => 'API funcionando']
+                    : ['label' => 'Groq API', 'status' => 'error', 'message' => 'Error ' . $response->status()];
             } catch (\Exception $e) {
-                $results['groq_api'] = ['status' => 'error', 'message' => 'Timeout o error de conexión'];
+                $results['groq_api'] = ['label' => 'Groq API', 'status' => 'error', 'message' => 'Timeout o error de conexión'];
             }
         } else {
-            $results['groq_api'] = ['status' => 'warning', 'message' => 'No configurada'];
+            $results['groq_api'] = ['label' => 'Groq API', 'status' => 'warning', 'message' => 'No configurada'];
         }
         
         // Test API OpenWeather
@@ -182,14 +222,27 @@ class CriticalSettingsController extends Controller
                     ]);
 
                 $results['openweather_api'] = $response->successful()
-                    ? ['status' => 'ok', 'message' => 'API funcionando']
-                    : ['status' => 'error', 'message' => 'Error ' . $response->status()];
+                    ? ['label' => 'OpenWeather API', 'status' => 'ok', 'message' => 'API funcionando']
+                    : ['label' => 'OpenWeather API', 'status' => 'error', 'message' => 'Error ' . $response->status()];
             } catch (\Exception $e) {
-                $results['openweather_api'] = ['status' => 'error', 'message' => 'Timeout o error de conexión'];
+                $results['openweather_api'] = ['label' => 'OpenWeather API', 'status' => 'error', 'message' => 'Timeout o error de conexión'];
             }
         } else {
-            $results['openweather_api'] = ['status' => 'warning', 'message' => 'No configurada'];
+            $results['openweather_api'] = ['label' => 'OpenWeather API', 'status' => 'warning', 'message' => 'No configurada'];
         }
+
+        // Test Cloudinary
+        if (CloudinaryService::isConfigured()) {
+            $results['cloudinary'] = ['label' => 'Cloudinary', 'status' => 'ok', 'message' => 'Configuración detectada'];
+        } else {
+            $results['cloudinary'] = ['label' => 'Cloudinary', 'status' => 'warning', 'message' => 'No configurada'];
+        }
+
+        // Test Storage público
+        $storageReady = is_dir(storage_path('app/public')) && (is_link(public_path('storage')) || is_dir(public_path('storage')));
+        $results['public_storage'] = $storageReady
+            ? ['label' => 'Storage público', 'status' => 'ok', 'message' => 'Disponible']
+            : ['label' => 'Storage público', 'status' => 'warning', 'message' => 'Falta enlace o carpeta pública'];
 
         return back()->with('connection_results', $results);
     }

@@ -112,6 +112,26 @@
     {{-- Herramientas de Mantenimiento --}}
     <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
         <h2 class="text-lg font-extrabold mb-4 text-slate-600">🔧 Herramientas de Mantenimiento</h2>
+
+        <div class="mb-5">
+            <h3 class="font-bold text-sm mb-3 text-slate-700">Conexiones e integraciones detectadas:</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                @foreach($systemConnections as $connection)
+                    <div class="rounded-xl border {{ $connection['configured'] ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50' }} p-3">
+                        <div class="flex items-start justify-between gap-2">
+                            <div>
+                                <p class="text-sm font-bold text-slate-800">{{ $connection['label'] }}</p>
+                                <p class="text-xs text-slate-500">{{ $connection['type'] }}</p>
+                            </div>
+                            <span class="text-xs font-bold {{ $connection['configured'] ? 'text-emerald-600' : 'text-amber-600' }}">
+                                {{ $connection['configured'] ? 'Configurada' : 'Pendiente' }}
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-600 mt-2">{{ $connection['details'] }}</p>
+                    </div>
+                @endforeach
+            </div>
+        </div>
         
         @if(session('success_tools'))
             <div class="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold">
@@ -138,7 +158,7 @@
                             @else
                                 <span class="text-rose-500">❌</span>
                             @endif
-                            <span class="font-medium capitalize">{{ str_replace('_', ' ', $service) }}:</span>
+                            <span class="font-medium">{{ $result['label'] ?? str_replace('_', ' ', $service) }}:</span>
                             <span class="text-slate-600">{{ $result['message'] }}</span>
                         </div>
                     @endforeach
@@ -163,7 +183,7 @@
                 <button type="submit" class="w-full p-4 rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 hover:bg-emerald-50 transition text-center">
                     <span class="text-2xl block mb-1">🔌</span>
                     <span class="font-bold text-slate-600">Probar Conexiones</span>
-                    <span class="text-xs text-slate-400 block">BD, APIs externas</span>
+                    <span class="text-xs text-slate-400 block">BD, APIs, Cloudinary y storage</span>
                 </button>
             </form>
 
