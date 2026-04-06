@@ -133,15 +133,27 @@ class ProductController extends Controller
         if ((bool)$product->is_active !== $data['is_active']) {
             $cambios['estado'] = ($product->is_active ? 'activo' : 'inactivo') . ' → ' . ($data['is_active'] ? 'activo' : 'inactivo');
         }
-        if (!empty($data['image']) && $data['image'] !== $product->image) {
+        
+        $imagenActualizada = !empty($data['image']) && $data['image'] !== $product->image;
+        if ($imagenActualizada) {
             $cambios['imagen'] = 'actualizada';
+            Log::info('Saving product with image URL: ' . $data['image']);
         }
 
         $product->update($data);
+        
+        // Verificar que se guardó correctamente
+        $product->refresh();
+        Log::info('Product after save - image: ' . ($product->image ?? 'NULL'));
 
         audit_log('product.updated', 'products', $product, $cambios ?: ['sin cambios' => 'ninguno']);
 
-        return redirect()->route('products.index')->with('success', 'Producto actualizado.');
+        $successMessage = 'Producto actualizado.';
+        if ($imagenActualizada) {
+            $successMessage .= ' Imagen guardada: ' . (str_starts_with($data['image'], 'http') ? 'Cloudinary' : 'Local');
+        }
+
+        return redirect()->route('products.index')->with('success', $successMessage);
     }
 
     public function destroy(Product $product)
@@ -174,18 +186,27 @@ class ProductController extends Controller
      */
     private function uploadImage($file): array
     {
+        Log::info('uploadImage called, checking Cloudinary config...');
+        Log::info('CLOUDINARY_URL exists: ' . (config('cloudinary.cloud_url') ? 'YES' : 'NO'));
+        
         // Intentar subir a Cloudinary si está configurado
         if (CloudinaryService::isConfigured()) {
             try {
-                return $this->cloudinary->uploadImage($file, 'products');
+                Log::info('Cloudinary is configured, attempting upload...');
+                $result = $this->cloudinary->uploadImage($file, 'products');
+                Log::info('Cloudinary upload success: ' . $result['url']);
+                return $result;
             } catch (\Exception $e) {
-                Log::warning('Cloudinary upload failed, using local storage: ' . $e->getMessage());
+                Log::error('Cloudinary upload failed: ' . $e->getMessage());
                 // Continúa al fallback local
             }
+        } else {
+            Log::warning('Cloudinary NOT configured, using local storage');
         }
         
         // Fallback a storage local
         $path = $file->store('products', 'public');
+        Log::info('Local storage used: ' . $path);
         return [
             'url' => $path,
             'public_id' => null,

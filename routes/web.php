@@ -10,9 +10,25 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\DailyReportController;
 use App\Http\Controllers\DashboardStatsController;
+use App\Services\CloudinaryService;
 
 // Health check para Railway (no requiere nada)
 Route::get('/health', fn () => response('ok', 200));
+
+// Diagnóstico de Cloudinary (temporal - eliminar después)
+Route::get('/cloudinary-check', function () {
+    $configUrl = config('cloudinary.cloud_url');
+    $envUrl = env('CLOUDINARY_URL');
+    $isConfigured = CloudinaryService::isConfigured();
+    
+    return response()->json([
+        'config_url_exists' => !empty($configUrl),
+        'config_url_preview' => $configUrl ? substr($configUrl, 0, 30) . '...' : null,
+        'env_url_exists' => !empty($envUrl),
+        'env_url_preview' => $envUrl ? substr($envUrl, 0, 30) . '...' : null,
+        'is_configured' => $isConfigured,
+    ]);
+});
 
 // Público - redirige según cookie de computadora de trabajo
 Route::get('/', function () {

@@ -14,16 +14,26 @@ class CloudinaryService
     public function uploadImage(UploadedFile $file, string $folder = 'products'): array
     {
         try {
+            Log::info('CloudinaryService: Starting upload to folder: ' . $folder);
+            
             $result = Cloudinary::upload($file->getRealPath(), [
                 'folder' => $folder,
             ]);
 
+            $publicId = $result->getPublicId();
+            $url = $result->getSecurePath();
+            
+            Log::info('CloudinaryService: Upload successful', [
+                'public_id' => $publicId,
+                'url' => $url,
+            ]);
+
             return [
-                'public_id' => $result->getPublicId(),
-                'url' => $result->getSecurePath(),
+                'public_id' => $publicId,
+                'url' => $url,
             ];
         } catch (\Exception $e) {
-            Log::error('Cloudinary upload error: ' . $e->getMessage());
+            Log::error('CloudinaryService: Upload error - ' . $e->getMessage());
             throw $e;
         }
     }
@@ -41,7 +51,7 @@ class CloudinaryService
             Cloudinary::destroy($publicId);
             return true;
         } catch (\Exception $e) {
-            Log::error('Cloudinary delete error: ' . $e->getMessage());
+            Log::error('CloudinaryService: Delete error - ' . $e->getMessage());
             return false;
         }
     }
@@ -51,7 +61,18 @@ class CloudinaryService
      */
     public static function isConfigured(): bool
     {
-        $cloudUrl = config('cloudinary.cloud_url');
-        return !empty($cloudUrl) && $cloudUrl !== 'cloudinary://:@';
+        // Intentar obtener de config primero, luego de env directamente
+        $cloudUrl = config('cloudinary.cloud_url') ?: env('CLOUDINARY_URL');
+        
+        $isConfigured = !empty($cloudUrl) 
+            && $cloudUrl !== 'cloudinary://:@'
+            && str_contains($cloudUrl, '@');
+        
+        Log::debug('CloudinaryService: isConfigured check', [
+            'cloud_url_exists' => !empty($cloudUrl),
+            'is_valid' => $isConfigured,
+        ]);
+        
+        return $isConfigured;
     }
 }
