@@ -465,13 +465,21 @@ class CriticalSettingsController extends Controller
         $dir = storage_path('backups');
         $backups = [];
 
+        // Crear directorio si no existe
         if (!is_dir($dir)) {
+            @mkdir($dir, 0755, true);
             return $backups;
         }
 
         $files = glob($dir . DIRECTORY_SEPARATOR . '*.sql');
         
+        if ($files === false) {
+            return $backups;
+        }
+
         foreach ($files as $file) {
+            if (!is_file($file)) continue;
+            
             $backups[] = [
                 'filename' => basename($file),
                 'size' => $this->formatBytes(filesize($file)),
@@ -503,10 +511,32 @@ class CriticalSettingsController extends Controller
     public function createBackup()
     {
         try {
-            Artisan::call('backup:db');
+            // Asegurar que el directorio existe
+            $dir = storage_path('backups');
+            if (!is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+
+            // Ejecutar comando de backup
+            $exitCode = Artisan::call('backup:db');
+            $output = Artisan::output();
+            
+            if ($exitCode !== 0) {
+                return back()->with('error_backup', 'Error al crear backup: ' . $output);
+            }
+
+            // Buscar el archivo más reciente
+            $files = glob($dir . DIRECTORY_SEPARATOR . '*.sql');
+            if (!empty($files)) {
+                usort($files, fn($a, $b) => filemtime($b) - filemtime($a));
+                $latestFile = basename($files[0]);
+                $size = $this->formatBytes(filesize($files[0]));
+                return back()->with('success_backup', "Backup creado: {$latestFile} ({$size})");
+            }
             
             return back()->with('success_backup', 'Backup creado correctamente.');
         } catch (\Exception $e) {
+            \Log::error('Error creando backup: ' . $e->getMessage());
             return back()->with('error_backup', 'Error al crear backup: ' . $e->getMessage());
         }
     }

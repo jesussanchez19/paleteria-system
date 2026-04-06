@@ -3,28 +3,17 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
 
 class BackupDatabase extends Command
 {
     protected $signature = 'backup:db {--path= : Ruta destino del .sql}';
-    protected $description = 'Genera un backup SQL de PostgreSQL usando pg_dump';
+    protected $description = 'Genera un backup SQL de la base de datos usando PHP puro';
 
     public function handle(): int
     {
-        $connection = config('database.default');
-
-        if ($connection !== 'pgsql') {
-            $this->error('Este comando está pensado para PostgreSQL (pgsql).');
-            return self::FAILURE;
-        }
-
-        $host = config('database.connections.pgsql.host');
-        $port = config('database.connections.pgsql.port');
-        $db   = config('database.connections.pgsql.database');
-        $user = config('database.connections.pgsql.username');
-        $pass = config('database.connections.pgsql.password');
-
         $dir = storage_path('backups');
         if (!File::exists($dir)) {
             File::makeDirectory($dir, 0755, true);
@@ -32,47 +21,114 @@ class BackupDatabase extends Command
 
         $filename = 'paleteria_backup_' . now()->format('Y-m-d_H-i-s') . '.sql';
         $defaultPath = $dir . DIRECTORY_SEPARATOR . $filename;
-
         $path = $this->option('path') ?: $defaultPath;
 
-        // pg_dump debe existir en el PATH del sistema (normal en instalaciones de PostgreSQL)
-        // En Windows, si no está, se debe agregar la carpeta bin de PostgreSQL al PATH.
-        $cmd = sprintf(
-            'pg_dump --host=%s --port=%s --username=%s --format=p %s > %s',
-            escapeshellarg((string) $host),
-            escapeshellarg((string) $port),
-            escapeshellarg((string) $user),
-            escapeshellarg((string) $db),
-            escapeshellarg((string) $path)
-        );
+        $this->info('Generando backup...');
 
-        // Setear contraseña sin exponerla en comando (PGPASSWORD)
-        // En Windows cmd/powershell, la sintaxis cambia, por eso usamos putenv:
-        putenv('PGPASSWORD=' . $pass);
+        try {
+            $sql = $this->generateBackupSQL();
+            File::put($path, $sql);
 
-        $exitCode = 0;
-        system($cmd, $exitCode);
+            $this->info('Backup creado: ' . $path);
+            $this->info('Tamaño: ' . $this->formatBytes(filesize($path)));
 
-        // limpiar variable
-        putenv('PGPASSWORD');
+            // auditoría
+            if (function_exists('audit_log')) {
+                audit_log('backup.db', 'system', null, [
+                    'path' => $path,
+                    'size' => filesize($path),
+                ]);
+            }
 
-        if ($exitCode !== 0) {
-            $this->error('Falló pg_dump. Revisa que PostgreSQL esté instalado y pg_dump esté en PATH.');
+            return self::SUCCESS;
+        } catch (\Exception $e) {
+            $this->error('Error al crear backup: ' . $e->getMessage());
             return self::FAILURE;
         }
+    }
 
-        $this->info('Backup creado: ' . $path);
+    private function generateBackupSQL(): string
+    {
+        $sql = "-- Backup generado el " . now()->format('Y-m-d H:i:s') . "\n";
+        $sql .= "-- Sistema: Paletería Creamyx\n\n";
 
-        // auditoría opcional si ya tienes audit_log()
-        if (function_exists('audit_log')) {
-            audit_log('backup.db', 'system', null, [
-                'path' => $path,
-                'db' => $db,
-                'host' => $host,
-                'port' => $port,
-            ]);
+        // Tablas a exportar (orden importante por dependencias)
+        $tables = [
+            'users',
+            'settings',
+            'products',
+            'inventories',
+            'sales',
+            'sale_details',
+            'cash_registers',
+            'audit_logs',
+            'weather_snapshots',
+        ];
+
+        foreach ($tables as $table) {
+            if (!Schema::hasTable($table)) {
+                continue;
+            }
+
+            $this->line("Exportando: {$table}");
+
+            // Obtener estructura de columnas
+            $columns = Schema::getColumnListing($table);
+            $records = DB::table($table)->get();
+
+            if ($records->isEmpty()) {
+                $sql .= "-- Tabla '{$table}' está vacía\n\n";
+                continue;
+            }
+
+            $sql .= "-- Tabla: {$table} ({$records->count()} registros)\n";
+            $sql .= "TRUNCATE TABLE \"{$table}\" CASCADE;\n";
+
+            foreach ($records as $record) {
+                $values = [];
+                foreach ($columns as $column) {
+                    $value = $record->{$column};
+                    if (is_null($value)) {
+                        $values[] = 'NULL';
+                    } elseif (is_bool($value)) {
+                        $values[] = $value ? 'TRUE' : 'FALSE';
+                    } elseif (is_numeric($value) && !is_string($value)) {
+                        $values[] = $value;
+                    } else {
+                        // Escapar comillas simples
+                        $escaped = str_replace("'", "''", (string) $value);
+                        $values[] = "'" . $escaped . "'";
+                    }
+                }
+
+                $columnList = '"' . implode('", "', $columns) . '"';
+                $valueList = implode(', ', $values);
+                $sql .= "INSERT INTO \"{$table}\" ({$columnList}) VALUES ({$valueList});\n";
+            }
+
+            $sql .= "\n";
         }
 
-        return self::SUCCESS;
+        // Resetear secuencias
+        $sql .= "-- Resetear secuencias\n";
+        foreach ($tables as $table) {
+            if (Schema::hasTable($table) && Schema::hasColumn($table, 'id')) {
+                $maxId = DB::table($table)->max('id') ?? 0;
+                $sql .= "SELECT setval(pg_get_serial_sequence('\"{$table}\"', 'id'), {$maxId}, true);\n";
+            }
+        }
+
+        return $sql;
+    }
+
+    private function formatBytes(int $bytes): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB'];
+        $i = 0;
+        while ($bytes >= 1024 && $i < count($units) - 1) {
+            $bytes /= 1024;
+            $i++;
+        }
+        return round($bytes, 2) . ' ' . $units[$i];
     }
 }
