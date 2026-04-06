@@ -100,13 +100,18 @@ class ProductController extends Controller
 
         // Si se sube imagen manualmente
         if ($request->hasFile('image_file')) {
-            // Eliminar imagen anterior
-            $this->deleteProductImage($product);
-            
-            // Subir nueva imagen
-            $imageData = $this->uploadImage($request->file('image_file'));
-            $data['image'] = $imageData['url'];
-            $data['cloudinary_public_id'] = $imageData['public_id'];
+            try {
+                // Eliminar imagen anterior
+                $this->deleteProductImage($product);
+                
+                // Subir nueva imagen
+                $imageData = $this->uploadImage($request->file('image_file'));
+                $data['image'] = $imageData['url'];
+                $data['cloudinary_public_id'] = $imageData['public_id'];
+            } catch (\Exception $e) {
+                Log::error('Error subiendo imagen: ' . $e->getMessage());
+                return back()->withInput()->with('error', 'Error al subir la imagen: ' . $e->getMessage());
+            }
         }
         // Si se proporciona nueva imagen generada (URL externa)
         elseif (!empty($data['image']) && $data['image'] !== $product->image) {

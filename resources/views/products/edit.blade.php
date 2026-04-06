@@ -8,6 +8,12 @@
     <p class="text-slate-600">{{ $product->name }}</p>
   </div>
 
+  @if(session('error'))
+  <div class="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-xl">
+    {{ session('error') }}
+  </div>
+  @endif
+
   <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
     <form method="POST" action="{{ route('products.update', $product) }}" class="space-y-4" id="product-form" enctype="multipart/form-data">
       @csrf
