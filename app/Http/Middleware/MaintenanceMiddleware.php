@@ -12,11 +12,20 @@ class MaintenanceMiddleware
     /**
      * Rutas que siempre están permitidas (incluso en mantenimiento)
      */
-    protected array $except = [
+    protected array $exceptRoutes = [
         'login',
         'logout',
         'mantenimiento',
         'health',
+    ];
+
+    /**
+     * Paths que siempre están permitidos (incluso en mantenimiento)
+     */
+    protected array $exceptPaths = [
+        '/health',
+        '/up',
+        '/maintenance-check',
     ];
 
     public function handle(Request $request, Closure $next): Response
@@ -28,9 +37,14 @@ class MaintenanceMiddleware
             return $next($request);
         }
 
-        // Permitir rutas excluidas
+        // Permitir paths excluidos (health checks, etc.)
+        if (in_array($request->getPathInfo(), $this->exceptPaths)) {
+            return $next($request);
+        }
+
+        // Permitir rutas excluidas por nombre
         $currentRoute = $request->route()?->getName();
-        if ($currentRoute && in_array($currentRoute, $this->except)) {
+        if ($currentRoute && in_array($currentRoute, $this->exceptRoutes)) {
             return $next($request);
         }
 

@@ -24,7 +24,7 @@ Route::get('/maintenance-check', function () {
         'is_active' => $value === '1',
         'all_settings' => $allSettings,
     ]);
-})->withoutMiddleware(\App\Http\Middleware\MaintenanceMiddleware::class);
+});
 
 // Página de mantenimiento (accesible siempre)
 Route::get('/mantenimiento', fn () => response()->view('maintenance', [], 503))->name('mantenimiento');
