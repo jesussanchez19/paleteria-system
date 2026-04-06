@@ -11,12 +11,18 @@ class Sale extends Model
     protected $fillable = [
         'user_id',
         'total',
+        'subtotal',
+        'discount_percent',
+        'discount_amount',
         'sold_at',
     ];
 
     protected $casts = [
         'sold_at' => 'datetime',
         'total' => 'decimal:2',
+        'subtotal' => 'decimal:2',
+        'discount_percent' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
     ];
 
     public function details(): HasMany

@@ -15,11 +15,15 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
             'maintenance' => \App\Http\Middleware\MaintenanceMiddleware::class,
+            'session.timeout' => \App\Http\Middleware\SessionTimeoutMiddleware::class,
+            'password.change' => \App\Http\Middleware\ForcePasswordChangeMiddleware::class,
         ]);
         
         // Aplicar middleware de mantenimiento a todas las rutas web
         $middleware->web(append: [
             \App\Http\Middleware\MaintenanceMiddleware::class,
+            \App\Http\Middleware\SessionTimeoutMiddleware::class,
+            \App\Http\Middleware\ForcePasswordChangeMiddleware::class,
         ]);
         
         // Confiar en proxies como ngrok

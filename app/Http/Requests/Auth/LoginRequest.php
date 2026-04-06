@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -40,15 +41,19 @@ class LoginRequest extends FormRequest
     public function authenticate(): void
     {
         $this->ensureIsNotRateLimited();
+        $this->ensureUserIsNotLocked();
 
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
+            $this->incrementFailedAttempts();
 
             throw ValidationException::withMessages([
                 'email' => trans('auth.failed'),
             ]);
         }
 
+        // Login exitoso - resetear intentos fallidos
+        $this->resetFailedAttempts();
         RateLimiter::clear($this->throttleKey());
     }
 
@@ -59,7 +64,9 @@ class LoginRequest extends FormRequest
      */
     public function ensureIsNotRateLimited(): void
     {
-        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
+        $maxAttempts = (int) app_setting('max_login_attempts', '5');
+        
+        if (! RateLimiter::tooManyAttempts($this->throttleKey(), $maxAttempts)) {
             return;
         }
 
@@ -73,6 +80,87 @@ class LoginRequest extends FormRequest
                 'minutes' => ceil($seconds / 60),
             ]),
         ]);
+    }
+
+    /**
+     * Verificar si el usuario está bloqueado por intentos fallidos
+     */
+    protected function ensureUserIsNotLocked(): void
+    {
+        $user = User::where('email', $this->input('email'))->first();
+        
+        if (!$user) {
+            return;
+        }
+
+        if ($user->locked_until && now()->lt($user->locked_until)) {
+            $minutes = now()->diffInMinutes($user->locked_until);
+            
+            throw ValidationException::withMessages([
+                'email' => "Tu cuenta está bloqueada. Intenta de nuevo en {$minutes} minutos.",
+            ]);
+        }
+
+        // Si el bloqueo expiró, resetear
+        if ($user->locked_until && now()->gte($user->locked_until)) {
+            $user->update([
+                'failed_login_attempts' => 0,
+                'locked_until' => null,
+            ]);
+        }
+    }
+
+    /**
+     * Incrementar intentos fallidos y bloquear si excede el límite
+     */
+    protected function incrementFailedAttempts(): void
+    {
+        $user = User::where('email', $this->input('email'))->first();
+        
+        if (!$user) {
+            return;
+        }
+
+        $maxAttempts = (int) app_setting('max_login_attempts', '5');
+        $newAttempts = $user->failed_login_attempts + 1;
+
+        $updateData = ['failed_login_attempts' => $newAttempts];
+
+        // Si excede el límite, bloquear por 15 minutos
+        if ($newAttempts >= $maxAttempts) {
+            $updateData['locked_until'] = now()->addMinutes(15);
+            
+            // Registrar en auditoría
+            \App\Models\AuditLog::create([
+                'user_id' => $user->id,
+                'action' => 'account.locked',
+                'module' => 'auth',
+                'entity_type' => 'User',
+                'entity_id' => $user->id,
+                'meta' => [
+                    '_entity_name' => $user->name,
+                    'motivo' => "Excedió {$maxAttempts} intentos de login",
+                    'bloqueado_hasta' => $updateData['locked_until']->format('d/m/Y H:i'),
+                ],
+            ]);
+        }
+
+        $user->update($updateData);
+    }
+
+    /**
+     * Resetear intentos fallidos después de login exitoso
+     */
+    protected function resetFailedAttempts(): void
+    {
+        $user = Auth::user();
+        
+        if ($user && ($user->failed_login_attempts > 0 || $user->locked_until)) {
+            $user->update([
+                'failed_login_attempts' => 0,
+                'locked_until' => null,
+            ]);
+        }
     }
 
     /**

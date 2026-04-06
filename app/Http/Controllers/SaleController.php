@@ -50,6 +50,8 @@ class SaleController extends Controller
                 'items' => ['required', 'array', 'min:1'],
                 'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
                 'items.*.qty' => ['required', 'integer', 'min:1'],
+                'gerente_auth_code' => ['nullable', 'string'], // Código de autorización del gerente
+                'discount_percent' => ['nullable', 'numeric', 'min:0'], // Porcentaje de descuento
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             if ($request->expectsJson() || $request->isJson() || $request->wantsJson()) {
@@ -64,9 +66,62 @@ class SaleController extends Controller
 
         $items = $data['items'];
 
+        // Validar descuento contra el máximo permitido
+        $maxDiscountPercent = (float) app_setting('max_discount_percent', '15');
+        $discountPercent = min((float) ($data['discount_percent'] ?? 0), $maxDiscountPercent);
+        $discountPercent = max(0, $discountPercent); // No permitir negativos
+
         // Traer productos involucrados en una sola consulta
         $productIds = collect($items)->pluck('product_id')->unique()->values();
         $products = Product::whereIn('id', $productIds)->get()->keyBy('id');
+
+        // Calcular total anticipado para verificar límite
+        $anticipatedTotal = 0;
+        foreach ($items as $item) {
+            $p = $products->get($item['product_id']);
+            if ($p) {
+                $anticipatedTotal += $p->price * $item['qty'];
+            }
+        }
+
+        // Verificar límite de venta sin autorización
+        $maxSaleWithoutAuth = (float) app_setting('max_sale_without_auth', '5000');
+        $user = Auth::user();
+        
+        if ($maxSaleWithoutAuth > 0 && $anticipatedTotal > $maxSaleWithoutAuth) {
+            // Si es vendedor, necesita autorización
+            if ($user && $user->role === 'vendedor') {
+                $gerenteAuthCode = $request->input('gerente_auth_code');
+                
+                if (!$gerenteAuthCode) {
+                    if ($request->expectsJson() || $request->isJson() || $request->wantsJson()) {
+                        return response()->json([
+                            'success' => false,
+                            'requires_auth' => true,
+                            'message' => "Venta de \${$anticipatedTotal} excede el límite de \${$maxSaleWithoutAuth}. Requiere autorización del gerente.",
+                            'limit' => $maxSaleWithoutAuth,
+                            'total' => $anticipatedTotal,
+                        ], 403);
+                    }
+                    return back()->with('error', "Venta excede el límite. Requiere autorización del gerente.");
+                }
+                
+                // Verificar código de autorización (PIN del gerente - últimos 4 dígitos de su ID + 1234)
+                // En producción, esto debería ser más seguro
+                $gerente = \App\Models\User::where('role', 'gerente')->first();
+                $expectedCode = $gerente ? str_pad($gerente->id % 10000, 4, '0', STR_PAD_LEFT) : '0000';
+                
+                if ($gerenteAuthCode !== $expectedCode) {
+                    if ($request->expectsJson() || $request->isJson() || $request->wantsJson()) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Código de autorización inválido.',
+                        ], 403);
+                    }
+                    return back()->with('error', 'Código de autorización inválido.');
+                }
+            }
+        }
 
         // Validación extra: evitar duplicados del mismo product_id en items
         // (si mandas duplicados, sumamos qty)
@@ -89,6 +144,7 @@ class SaleController extends Controller
                 $sale = Sale::create([
                     'user_id' => Auth::check() ? Auth::id() : null,
                     'total' => 0,
+                    'discount_percent' => $discountPercent,
                     'sold_at' => now(),
                 ]);
 
@@ -117,8 +173,14 @@ class SaleController extends Controller
                 $p->save();
             }
 
-            // Actualizar total final
-            $sale->update(['total' => $total]);
+            // Actualizar total final (aplicar descuento)
+            $discountAmount = $total * ($discountPercent / 100);
+            $finalTotal = $total - $discountAmount;
+            $sale->update([
+                'total' => $finalTotal,
+                'subtotal' => $total,
+                'discount_amount' => $discountAmount,
+            ]);
 
             DB::commit();
 

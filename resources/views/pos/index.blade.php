@@ -118,6 +118,21 @@
                     <span class="text-slate-600">Subtotal</span>
                     <span id="subtotal" class="font-semibold text-slate-900">$0.00</span>
                 </div>
+                
+                {{-- Campo de descuento --}}
+                <div class="flex items-center gap-2 bg-amber-50 rounded-lg p-2">
+                    <label class="text-sm text-slate-600">Descuento:</label>
+                    <input type="number" id="discount-input" min="0" max="{{ app_setting('max_discount_percent', '15') }}" value="0" 
+                           class="w-16 px-2 py-1 text-sm rounded border border-slate-300 text-center"
+                           onchange="applyDiscount()" onkeyup="applyDiscount()">
+                    <span class="text-sm text-slate-600">%</span>
+                    <span class="text-xs text-slate-500">(máx {{ app_setting('max_discount_percent', '15') }}%)</span>
+                </div>
+                <div class="flex justify-between text-sm text-rose-600" id="discount-row" style="display: none;">
+                    <span>Descuento</span>
+                    <span id="discount-amount">-$0.00</span>
+                </div>
+                
                 <div class="flex justify-between text-2xl font-extrabold bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg p-3">
                     <span class="text-slate-900">Total</span>
                     <span id="total" class="text-emerald-600">$0.00</span>
@@ -151,10 +166,48 @@
 <script>
     const cart = new Map();
     const salesEnabled = {{ $salesEnabled ? 'true' : 'false' }};
+    const maxDiscountPercent = {{ app_setting('max_discount_percent', '15') }};
+    let currentDiscount = 0;
 
     function money(n) {
         const v = Math.round(n * 100) / 100;
         return '$' + v.toFixed(2);
+    }
+
+    function applyDiscount() {
+        let discount = parseFloat(document.getElementById('discount-input').value) || 0;
+        
+        // Validar límite máximo
+        if (discount > maxDiscountPercent) {
+            discount = maxDiscountPercent;
+            document.getElementById('discount-input').value = maxDiscountPercent;
+            alert(`El descuento máximo permitido es ${maxDiscountPercent}%`);
+        }
+        if (discount < 0) {
+            discount = 0;
+            document.getElementById('discount-input').value = 0;
+        }
+        
+        currentDiscount = discount;
+        updateTotals();
+    }
+
+    function updateTotals() {
+        const t = totals();
+        const discountAmount = t.subtotal * (currentDiscount / 100);
+        const total = t.subtotal - discountAmount;
+        
+        document.getElementById('subtotal').innerText = money(t.subtotal);
+        document.getElementById('total').innerText = money(total);
+        
+        // Mostrar/ocultar fila de descuento
+        const discountRow = document.getElementById('discount-row');
+        if (currentDiscount > 0) {
+            discountRow.style.display = 'flex';
+            document.getElementById('discount-amount').innerText = '-' + money(discountAmount);
+        } else {
+            discountRow.style.display = 'none';
+        }
     }
 
     function addToCart(id, name, price, stock) {
@@ -194,9 +247,7 @@
         const subtotalEl = document.querySelector(`[data-subtotal="${id}"]`);
         if (subtotalEl) subtotalEl.innerText = money(item.qty * item.price);
 
-        const t = totals();
-        document.getElementById('subtotal').innerText = money(t.subtotal);
-        document.getElementById('total').innerText = money(t.total);
+        updateTotals();
 
         document.getElementById('btn-cobrar').disabled = !salesEnabled || cart.size === 0;
     }
@@ -291,9 +342,7 @@
             btnCobrar.style.cursor = 'pointer';
         }
 
-        const t = totals();
-        document.getElementById('subtotal').innerText = money(t.subtotal);
-        document.getElementById('total').innerText = money(t.total);
+        updateTotals();
     }
 
     // Delegación de eventos para inputs de cantidad (Enter)
@@ -364,10 +413,22 @@
         }
 
         // Ahora sí, registrar la venta
+        processSale(receivedAmount, totalAmount);
+    }
+
+    function processSale(receivedAmount, totalAmount, gerenteAuthCode = null) {
         const items = Array.from(cart.values()).map(i => ({
             product_id: i.id,
             qty: i.qty
         }));
+
+        const body = { 
+            items,
+            discount_percent: currentDiscount
+        };
+        if (gerenteAuthCode) {
+            body.gerente_auth_code = gerenteAuthCode;
+        }
 
         fetch("{{ route('pos.checkout') }}", {
             method: 'POST',
@@ -375,17 +436,27 @@
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
             },
-            body: JSON.stringify({ items })
+            body: JSON.stringify(body)
         })
         .then(res => {
-            if (!res.ok) {
-                return res.json().then(err => {
-                    throw new Error(err.message || 'Error al registrar la venta');
-                });
-            }
-            return res.json();
+            return res.json().then(data => {
+                if (!res.ok) {
+                    // Verificar si requiere autorización del gerente
+                    if (data.requires_auth) {
+                        const code = prompt(`${data.message}\n\nIngresa el código de autorización del gerente:`);
+                        if (code) {
+                            processSale(receivedAmount, totalAmount, code);
+                        }
+                        return null;
+                    }
+                    throw new Error(data.message || 'Error al registrar la venta');
+                }
+                return data;
+            });
         })
           .then(data => {
+              if (!data) return; // Si fue requires_auth, ya se reintentó
+              
               alert(`Venta realizada. Total: $${data.total}`);
               // Mostrar botón para ver ticket con pago y cambio justo debajo del botón cobrar
               const pago = receivedAmount;
@@ -408,6 +479,8 @@
               }
               // Limpiar carrito y desactivar botón cobrar
               cart.clear();
+              currentDiscount = 0;
+              document.getElementById('discount-input').value = 0;
               renderCart();
               document.getElementById('btn-cobrar').disabled = true;
           })
