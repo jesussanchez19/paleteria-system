@@ -4,6 +4,7 @@ namespace App\Services;
 
 use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 
 class CloudinaryService
 {
@@ -12,19 +13,19 @@ class CloudinaryService
      */
     public function uploadImage(UploadedFile $file, string $folder = 'products'): array
     {
-        $result = Cloudinary::upload($file->getRealPath(), [
-            'folder' => $folder,
-            'resource_type' => 'image',
-            'transformation' => [
-                'quality' => 'auto',
-                'fetch_format' => 'auto',
-            ],
-        ]);
+        try {
+            $result = Cloudinary::upload($file->getRealPath(), [
+                'folder' => $folder,
+            ]);
 
-        return [
-            'public_id' => $result->getPublicId(),
-            'url' => $result->getSecurePath(),
-        ];
+            return [
+                'public_id' => $result->getPublicId(),
+                'url' => $result->getSecurePath(),
+            ];
+        } catch (\Exception $e) {
+            Log::error('Cloudinary upload error: ' . $e->getMessage());
+            throw $e;
+        }
     }
 
     /**
@@ -40,7 +41,7 @@ class CloudinaryService
             Cloudinary::destroy($publicId);
             return true;
         } catch (\Exception $e) {
-            report($e);
+            Log::error('Cloudinary delete error: ' . $e->getMessage());
             return false;
         }
     }
@@ -50,9 +51,7 @@ class CloudinaryService
      */
     public static function isConfigured(): bool
     {
-        return !empty(env('CLOUDINARY_URL')) || 
-               (!empty(env('CLOUDINARY_CLOUD_NAME')) && 
-                !empty(env('CLOUDINARY_KEY')) && 
-                !empty(env('CLOUDINARY_SECRET')));
+        $cloudUrl = config('cloudinary.cloud_url');
+        return !empty($cloudUrl) && $cloudUrl !== 'cloudinary://:@';
     }
 }

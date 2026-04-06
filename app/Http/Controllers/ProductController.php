@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Services\CloudinaryService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
@@ -155,7 +156,12 @@ class ProductController extends Controller
     {
         // Intentar subir a Cloudinary si está configurado
         if (CloudinaryService::isConfigured()) {
-            return $this->cloudinary->uploadImage($file, 'products');
+            try {
+                return $this->cloudinary->uploadImage($file, 'products');
+            } catch (\Exception $e) {
+                Log::warning('Cloudinary upload failed, using local storage: ' . $e->getMessage());
+                // Continúa al fallback local
+            }
         }
         
         // Fallback a storage local
