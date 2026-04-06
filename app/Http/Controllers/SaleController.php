@@ -5,6 +5,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleDetail;
+use App\Services\LargeSaleAlertService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -12,6 +13,10 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class SaleController extends Controller
 {
+    public function __construct(private LargeSaleAlertService $largeSaleAlertService)
+    {
+    }
+
     public function show(Sale $sale)
     {
         $sale->load('details.product');
@@ -118,6 +123,8 @@ class SaleController extends Controller
                 'productos' => $normalized->count() . ' productos',
                 'vendedor' => auth()->user()->name ?? 'Sistema',
             ]);
+
+            $this->largeSaleAlertService->sendIfNeeded($sale);
 
             // Limpieza del carrito en frontend: lo haremos desde JS
             if ($request->expectsJson() || $request->isJson() || $request->wantsJson()) {

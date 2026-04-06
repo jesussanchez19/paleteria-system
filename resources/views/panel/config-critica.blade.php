@@ -250,6 +250,15 @@
                 </div>
 
                 <div>
+                    <label class="text-sm font-semibold text-slate-600">📱 Teléfono / WhatsApp</label>
+                    <input type="text" name="gerente_phone" value="{{ old('gerente_phone', $gerente->phone) }}"
+                           class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
+                           placeholder="Ej. 6671234567">
+                    <p class="text-xs text-slate-500 mt-1">Se usará para alertas por WhatsApp</p>
+                    @error('gerente_phone') <p class="text-sm text-rose-600 mt-1">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
                     <label class="text-sm font-semibold text-slate-600">🔑 Nueva contraseña</label>
                     <input type="password" name="gerente_password" 
                            class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
@@ -312,6 +321,15 @@
                 </div>
 
                 <div>
+                    <label class="text-sm font-semibold text-slate-600">📱 Teléfono / WhatsApp</label>
+                    <input type="text" name="gerente_phone" value="{{ old('gerente_phone') }}"
+                           class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" required
+                           placeholder="Ej. 6671234567">
+                    <p class="text-xs text-slate-500 mt-1">Aquí llegará la alerta por WhatsApp</p>
+                    @error('gerente_phone') <p class="text-sm text-rose-600 mt-1">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
                     <label class="text-sm font-semibold text-slate-600">🔑 Contraseña</label>
                     <input type="password" name="gerente_password" 
                            class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" required>
@@ -324,14 +342,30 @@
                     <input type="password" name="gerente_password_confirmation" 
                            class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" required>
                 </div>
+
+                <div>
+                    <label class="text-sm font-semibold text-slate-600">🔢 Código de verificación</label>
+                    <input type="text" name="gerente_verification_code" value="{{ old('gerente_verification_code') }}"
+                           class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" required
+                           placeholder="Código de 6 dígitos">
+                    <p class="text-xs text-slate-500 mt-1">Primero envía el código al correo del gerente</p>
+                    @error('gerente_verification_code') <p class="text-sm text-rose-600 mt-1">{{ $message }}</p> @enderror
+                </div>
             </div>
 
-            <div class="mt-4">
+            <div class="mt-4 flex flex-col sm:flex-row gap-3">
+                <button type="submit"
+                        formaction="{{ route('panel.config.critica.gerente.send-code') }}"
+                        formnovalidate
+                        class="px-5 py-2 rounded-xl bg-sky-600 text-white font-bold hover:bg-sky-700 transition">
+                    📧 Enviar código al correo
+                </button>
                 <button type="submit"
                         class="px-5 py-2 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition">
                     ➕ Crear gerente
                 </button>
             </div>
+            <p class="text-xs text-slate-500 mt-2">El correo se marca como verificado solo si capturas correctamente el código enviado.</p>
         </form>
     </div>
     @endif
@@ -459,66 +493,70 @@
                 </div>
             </div>
 
-            {{-- Botón crear backup --}}
-            <div class="mb-4">
-                <form action="{{ route('panel.config.critica.backup.create') }}" method="POST" class="inline">
-                    @csrf
-                    <button type="submit" 
-                            class="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition">
-                        ➕ Crear backup ahora
-                    </button>
-                </form>
+            {{-- Botón guardar --}}
+            <div class="mb-6">
+                <button type="submit"
+                        class="w-full sm:w-auto px-6 py-3 rounded-2xl bg-rose-600 text-white font-extrabold hover:bg-rose-700 transition">
+                    🔐 Guardar configuración crítica
+                </button>
             </div>
-
-            {{-- Lista de backups --}}
-            <div class="border border-slate-200 rounded-xl overflow-hidden">
-                <div class="bg-slate-50 px-4 py-2 border-b border-slate-200">
-                    <h3 class="text-sm font-semibold text-slate-600">📁 Backups disponibles ({{ count($backups) }})</h3>
-                </div>
-                
-                @if(count($backups) > 0)
-                    <div class="divide-y divide-slate-100 max-h-64 overflow-y-auto">
-                        @foreach($backups as $backup)
-                            <div class="flex items-center justify-between px-4 py-3 hover:bg-slate-50">
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-sm font-medium text-slate-800 truncate">{{ $backup['filename'] }}</p>
-                                    <p class="text-xs text-slate-500">{{ $backup['size'] }} · {{ $backup['age'] }}</p>
-                                </div>
-                                <div class="flex items-center gap-2 ml-4">
-                                    <a href="{{ route('panel.config.critica.backup.download', $backup['filename']) }}" 
-                                       class="px-3 py-1 text-xs font-bold text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition">
-                                        ⬇️ Descargar
-                                    </a>
-                                    <form action="{{ route('panel.config.critica.backup.delete', $backup['filename']) }}" 
-                                          method="POST" 
-                                          onsubmit="return confirm('¿Eliminar este backup?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" 
-                                                class="px-3 py-1 text-xs font-bold text-rose-600 bg-rose-50 rounded-lg hover:bg-rose-100 transition">
-                                            🗑️ Eliminar
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                @else
-                    <div class="px-4 py-6 text-center text-slate-500 text-sm">
-                        No hay backups disponibles. Crea uno nuevo.
-                    </div>
-                @endif
-            </div>
-        </div>
-
-        {{-- Botón guardar --}}
-        <div>
-            <button type="submit"
-                    class="w-full sm:w-auto px-6 py-3 rounded-2xl bg-rose-600 text-white font-extrabold hover:bg-rose-700 transition">
-                🔐 Guardar configuración crítica
-            </button>
         </div>
     </form>
+
+    <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+        <h2 class="text-lg font-extrabold mb-4 text-slate-600">🗂️ Gestión de Backups</h2>
+
+        {{-- Botón crear backup --}}
+        <div class="mb-4">
+            <form action="{{ route('panel.config.critica.backup.create') }}" method="POST" class="inline">
+                @csrf
+                <button type="submit" 
+                        class="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition">
+                    ➕ Crear backup ahora
+                </button>
+            </form>
+        </div>
+
+        {{-- Lista de backups --}}
+        <div class="border border-slate-200 rounded-xl overflow-hidden">
+            <div class="bg-slate-50 px-4 py-2 border-b border-slate-200">
+                <h3 class="text-sm font-semibold text-slate-600">📁 Backups disponibles ({{ count($backups) }})</h3>
+            </div>
+                
+            @if(count($backups) > 0)
+                <div class="divide-y divide-slate-100 max-h-64 overflow-y-auto">
+                    @foreach($backups as $backup)
+                        <div class="flex items-center justify-between px-4 py-3 hover:bg-slate-50">
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-slate-800 truncate">{{ $backup['filename'] }}</p>
+                                <p class="text-xs text-slate-500">{{ $backup['size'] }} · {{ $backup['age'] }}</p>
+                            </div>
+                            <div class="flex items-center gap-2 ml-4">
+                                <a href="{{ route('panel.config.critica.backup.download', $backup['filename']) }}" 
+                                   class="px-3 py-1 text-xs font-bold text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition">
+                                    ⬇️ Descargar
+                                </a>
+                                <form action="{{ route('panel.config.critica.backup.delete', $backup['filename']) }}" 
+                                      method="POST" 
+                                      onsubmit="return confirm('¿Eliminar este backup?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" 
+                                            class="px-3 py-1 text-xs font-bold text-rose-600 bg-rose-50 rounded-lg hover:bg-rose-100 transition">
+                                        🗑️ Eliminar
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <div class="px-4 py-6 text-center text-slate-500 text-sm">
+                    No hay backups disponibles. Crea uno nuevo.
+                </div>
+            @endif
+        </div>
+    </div>
 
 </div>
 @endsection

@@ -170,6 +170,8 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
         ->name('panel.config.critica.update');
     Route::post('/panel/config-critica/gerente', [\App\Http\Controllers\CriticalSettingsController::class, 'updateGerente'])
         ->name('panel.config.critica.gerente');
+    Route::post('/panel/config-critica/gerente/enviar-codigo', [\App\Http\Controllers\CriticalSettingsController::class, 'sendGerenteVerificationCode'])
+        ->name('panel.config.critica.gerente.send-code');
     Route::post('/panel/config-critica/gerente/crear', [\App\Http\Controllers\CriticalSettingsController::class, 'storeGerente'])
         ->name('panel.config.critica.gerente.store');
     Route::post('/panel/config-critica/clear-cache', [\App\Http\Controllers\CriticalSettingsController::class, 'clearCache'])

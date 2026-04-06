@@ -13,9 +13,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules;
 use App\Services\CloudinaryService;
+use App\Mail\GerenteVerificationCodeMail;
 
 class CriticalSettingsController extends Controller
 {
@@ -90,11 +92,25 @@ class CriticalSettingsController extends Controller
                 'details' => config('services.groq.model', 'Sin modelo'),
             ],
             [
+                'key' => 'mail',
+                'label' => 'Correo SMTP',
+                'type' => 'Servicio externo',
+                'configured' => !empty(config('mail.default')) && config('mail.default') !== 'log',
+                'details' => strtoupper((string) config('mail.default', 'LOG')),
+            ],
+            [
                 'key' => 'openweather_api',
                 'label' => 'OpenWeather API',
                 'type' => 'API externa',
                 'configured' => !empty(config('services.openweather.key')),
                 'details' => config('services.openweather.city', 'Sin ciudad'),
+            ],
+            [
+                'key' => 'whatsapp',
+                'label' => 'WhatsApp API',
+                'type' => 'API externa',
+                'configured' => !empty(config('services.whatsapp.token')) && !empty(config('services.whatsapp.phone_number_id')),
+                'details' => !empty(config('services.whatsapp.phone_number_id')) ? 'Phone Number ID configurado' : 'Sin configurar',
             ],
             [
                 'key' => 'cloudinary',
@@ -259,6 +275,11 @@ class CriticalSettingsController extends Controller
         } else {
             $results['groq_api'] = ['label' => 'Groq API', 'status' => 'warning', 'message' => 'No configurada'];
         }
+
+        $mailConfigured = !empty(config('mail.default')) && config('mail.default') !== 'log';
+        $results['mail'] = $mailConfigured
+            ? ['label' => 'Correo SMTP', 'status' => 'ok', 'message' => 'Mailer activo: ' . strtoupper((string) config('mail.default'))]
+            : ['label' => 'Correo SMTP', 'status' => 'warning', 'message' => 'MAIL_MAILER sigue en LOG o sin configurar'];
         
         // Test API OpenWeather
         $weatherKey = config('services.openweather.key') ?: app_setting('weather_api_key');
@@ -288,6 +309,10 @@ class CriticalSettingsController extends Controller
         } else {
             $results['cloudinary'] = ['label' => 'Cloudinary', 'status' => 'warning', 'message' => 'No configurada'];
         }
+
+        $results['whatsapp'] = (!empty(config('services.whatsapp.token')) && !empty(config('services.whatsapp.phone_number_id')))
+            ? ['label' => 'WhatsApp API', 'status' => 'ok', 'message' => 'Configuración detectada']
+            : ['label' => 'WhatsApp API', 'status' => 'warning', 'message' => 'Falta token o phone number id'];
 
         // Test Storage público
         $storageReady = is_dir(storage_path('app/public')) && (is_link(public_path('storage')) || is_dir(public_path('storage')));
@@ -410,6 +435,7 @@ class CriticalSettingsController extends Controller
         $rules = [
             'gerente_name' => ['required', 'string', 'max:255'],
             'gerente_email' => ['required', 'email', 'max:255', 'unique:users,email,' . $gerente->id],
+            'gerente_phone' => ['nullable', 'string', 'max:20'],
         ];
 
         // Si se proporciona contraseña, validarla
@@ -422,10 +448,12 @@ class CriticalSettingsController extends Controller
         // Capturar valores anteriores
         $oldName = $gerente->name;
         $oldEmail = $gerente->email;
+        $oldPhone = $gerente->phone;
 
         // Actualizar datos
         $gerente->name = $validated['gerente_name'];
         $gerente->email = $validated['gerente_email'];
+        $gerente->phone = $validated['gerente_phone'] ?? null;
 
         $changes = [];
         if ($oldName !== $gerente->name) {
@@ -433,6 +461,9 @@ class CriticalSettingsController extends Controller
         }
         if ($oldEmail !== $gerente->email) {
             $changes['Email'] = $oldEmail . ' → ' . $gerente->email;
+        }
+        if (($oldPhone ?? '') !== ($gerente->phone ?? '')) {
+            $changes['Teléfono'] = ($oldPhone ?: '(vacío)') . ' → ' . ($gerente->phone ?: '(vacío)');
         }
 
         if ($request->filled('gerente_password')) {
@@ -455,6 +486,50 @@ class CriticalSettingsController extends Controller
         }
 
         return back()->with('success_gerente', 'Datos del gerente actualizados correctamente.');
+    }
+
+    public function sendGerenteVerificationCode(Request $request)
+    {
+        if (User::where('role', 'gerente')->exists()) {
+            return back()->with('error', 'Ya existe un gerente en el sistema.')->withInput();
+        }
+
+        if (config('mail.default') === 'log') {
+            return back()
+                ->withInput()
+                ->with('error', 'El correo no está configurado para envío real. Configura Gmail SMTP antes de enviar el código.');
+        }
+
+        $validated = $request->validate([
+            'gerente_name' => ['required', 'string', 'max:255'],
+            'gerente_email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'gerente_phone' => ['required', 'string', 'max:20'],
+        ]);
+
+        $code = (string) random_int(100000, 999999);
+        $cacheKey = $this->gerenteVerificationCacheKey($validated['gerente_email']);
+
+        Cache::put($cacheKey, [
+            'email' => $validated['gerente_email'],
+            'phone' => $validated['gerente_phone'],
+            'code_hash' => Hash::make($code),
+        ], now()->addMinutes(10));
+
+        try {
+            Mail::to($validated['gerente_email'])->send(
+                new GerenteVerificationCodeMail($validated['gerente_name'], $code)
+            );
+
+            return back()
+                ->withInput()
+                ->with('success_gerente', 'Código enviado al correo del gerente. Vigencia: 10 minutos.');
+        } catch (\Throwable $e) {
+            Cache::forget($cacheKey);
+
+            return back()
+                ->withInput()
+                ->with('error', 'No se pudo enviar el código por correo: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -573,16 +648,37 @@ class CriticalSettingsController extends Controller
         $validated = $request->validate([
             'gerente_name' => ['required', 'string', 'max:255'],
             'gerente_email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'gerente_phone' => ['required', 'string', 'max:20'],
             'gerente_password' => ['required', 'min:8', 'confirmed'],
+            'gerente_verification_code' => ['required', 'digits:6'],
         ]);
+
+        $cacheKey = $this->gerenteVerificationCacheKey($validated['gerente_email']);
+        $verificationData = Cache::get($cacheKey);
+
+        if (!$verificationData) {
+            return back()->withInput()->with('error', 'Primero envía y valida el código del correo del gerente.');
+        }
+
+        if (($verificationData['phone'] ?? null) !== $validated['gerente_phone']) {
+            return back()->withInput()->with('error', 'El teléfono cambió después de enviar el código. Vuelve a solicitarlo.');
+        }
+
+        if (!Hash::check($validated['gerente_verification_code'], $verificationData['code_hash'] ?? '')) {
+            return back()->withInput()->with('error', 'El código de verificación no es válido.');
+        }
 
         $gerente = User::create([
             'name' => $validated['gerente_name'],
             'email' => $validated['gerente_email'],
+            'phone' => $validated['gerente_phone'],
             'password' => Hash::make($validated['gerente_password']),
             'role' => 'gerente',
             'is_active' => true,
+            'email_verified_at' => now(),
         ]);
+
+        Cache::forget($cacheKey);
 
         // Auditoría
         \App\Models\AuditLog::create([
@@ -591,9 +687,14 @@ class CriticalSettingsController extends Controller
             'module' => 'usuarios',
             'entity_type' => 'User',
             'entity_id' => $gerente->id,
-            'meta' => ['_entity_name' => $gerente->name, 'email' => $gerente->email],
+            'meta' => ['_entity_name' => $gerente->name, 'email' => $gerente->email, 'teléfono' => $gerente->phone],
         ]);
 
         return back()->with('success_gerente', 'Gerente creado correctamente.');
+    }
+
+    private function gerenteVerificationCacheKey(string $email): string
+    {
+        return 'gerente_verification:' . sha1(mb_strtolower(trim($email)));
     }
 }
