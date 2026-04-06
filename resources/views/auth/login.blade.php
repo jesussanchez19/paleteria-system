@@ -46,9 +46,7 @@
             <!-- Contenido -->
             <div class="relative z-10 flex flex-col justify-center items-center w-full p-12 text-white">
                 <!-- Logo -->
-                <div class="w-24 h-24 rounded-3xl accent-gradient flex items-center justify-center shadow-2xl shadow-pink-500/30 mb-8">
-                    <span class="text-5xl">🍦</span>
-                </div>
+                <img src="{{ asset('images/logo-creamyx.png') }}" alt="Creamyx" class="w-32 h-32 rounded-3xl shadow-2xl shadow-pink-500/30 mb-8 object-contain bg-white/10 p-2">
                 
                 <h1 class="text-5xl font-extrabold mb-4 tracking-tight">Creamyx</h1>
                 <p class="text-xl text-indigo-200 text-center max-w-md leading-relaxed">
@@ -90,9 +88,7 @@
             <div class="w-full max-w-md">
                 <!-- Logo móvil -->
                 <div class="lg:hidden text-center mb-10">
-                    <div class="w-20 h-20 rounded-2xl accent-gradient flex items-center justify-center shadow-xl mx-auto mb-4">
-                        <span class="text-4xl">🍦</span>
-                    </div>
+                    <img src="{{ asset('images/logo-creamyx.png') }}" alt="Creamyx" class="w-24 h-24 rounded-2xl shadow-xl mx-auto mb-4 object-contain">
                     <h1 class="text-3xl font-extrabold text-slate-800">Creamyx</h1>
                 </div>
 

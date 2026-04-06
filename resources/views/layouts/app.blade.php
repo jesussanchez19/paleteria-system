@@ -41,9 +41,7 @@
             <div class="flex flex-col h-full">
                 <!-- Logo -->
                 <div class="flex items-center gap-3 px-6 py-5 border-b border-white/10">
-                    <div class="w-10 h-10 rounded-xl accent-gradient flex items-center justify-center shadow-lg">
-                        <span class="text-xl">🍦</span>
-                    </div>
+                    <img src="{{ asset('images/logo-creamyx.png') }}" alt="Creamyx" class="w-12 h-12 rounded-xl shadow-lg object-contain bg-white/10 p-1">
                     <div>
                         <h1 class="text-lg font-bold text-white">Creamyx</h1>
                         <p class="text-xs text-indigo-300">Sistema de gestión</p>
@@ -176,9 +174,7 @@
                         <!-- Logo para guest -->
                         @guest
                         <a href="{{ url('/') }}" class="flex items-center gap-2">
-                            <div class="w-9 h-9 rounded-xl accent-gradient flex items-center justify-center">
-                                <span class="text-lg">🍦</span>
-                            </div>
+                            <img src="{{ asset('images/logo-creamyx.png') }}" alt="Creamyx" class="w-10 h-10 rounded-xl object-contain">
                             <span class="font-bold text-slate-800">Creamyx</span>
                         </a>
                         @endguest
@@ -217,8 +213,14 @@
 
             <!-- Footer -->
             <footer class="border-t border-slate-200 bg-white">
-                <div class="px-6 py-4 text-center text-sm text-slate-500">
-                    © {{ date('Y') }} Creamyx — Desarrollado por <span class="font-medium text-slate-600">SmartCore Solutions</span>
+                <div class="px-6 py-4 flex flex-col sm:flex-row items-center justify-center gap-2 text-sm text-slate-500">
+                    <span>© {{ date('Y') }} Creamyx</span>
+                    <span class="hidden sm:inline">—</span>
+                    <span class="flex items-center gap-2">
+                        Desarrollado por 
+                        <img src="{{ asset('images/logo-smartcore.png') }}" alt="SmartCore Solutions" class="h-5 w-auto inline-block">
+                        <span class="font-medium text-slate-600">SmartCore Solutions</span>
+                    </span>
                 </div>
             </footer>
         </div>
