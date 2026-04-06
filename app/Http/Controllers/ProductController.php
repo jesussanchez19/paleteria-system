@@ -3,11 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Services\CloudinaryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
+    public function __construct(
+        protected CloudinaryService $cloudinary
+    ) {}
+
     public function index(Request $request)
     {
         $query = Product::orderBy('id', 'desc');
@@ -47,9 +52,11 @@ class ProductController extends Controller
             $data['pieces_per_package'] = null;
         }
 
-        // Si se sube imagen manualmente, guardarla
+        // Si se sube imagen manualmente
         if ($request->hasFile('image_file')) {
-            $data['image'] = $request->file('image_file')->store('products', 'public');
+            $imageData = $this->uploadImage($request->file('image_file'));
+            $data['image'] = $imageData['url'];
+            $data['cloudinary_public_id'] = $imageData['public_id'];
         }
 
         $product = Product::create($data);
@@ -90,18 +97,20 @@ class ProductController extends Controller
             $data['pieces_per_package'] = null;
         }
 
-        // Si se sube imagen manualmente, guardarla y eliminar anterior
+        // Si se sube imagen manualmente
         if ($request->hasFile('image_file')) {
-            if ($product->image) {
-                Storage::disk('public')->delete($product->image);
-            }
-            $data['image'] = $request->file('image_file')->store('products', 'public');
+            // Eliminar imagen anterior
+            $this->deleteProductImage($product);
+            
+            // Subir nueva imagen
+            $imageData = $this->uploadImage($request->file('image_file'));
+            $data['image'] = $imageData['url'];
+            $data['cloudinary_public_id'] = $imageData['public_id'];
         }
-        // Si se proporciona nueva imagen generada, eliminar la anterior
+        // Si se proporciona nueva imagen generada (URL externa)
         elseif (!empty($data['image']) && $data['image'] !== $product->image) {
-            if ($product->image) {
-                Storage::disk('public')->delete($product->image);
-            }
+            $this->deleteProductImage($product);
+            $data['cloudinary_public_id'] = null; // URL externa, no es de Cloudinary
         }
 
         // Capturar cambios antes de actualizar
@@ -119,7 +128,7 @@ class ProductController extends Controller
             $cambios['estado'] = ($product->is_active ? 'activo' : 'inactivo') . ' → ' . ($data['is_active'] ? 'activo' : 'inactivo');
         }
         if (!empty($data['image']) && $data['image'] !== $product->image) {
-            $cambios['imagen'] = 'actualizada con IA';
+            $cambios['imagen'] = 'actualizada';
         }
 
         $product->update($data);
@@ -132,13 +141,47 @@ class ProductController extends Controller
     public function destroy(Product $product)
     {
         // Eliminar imagen si existe
-        if ($product->image) {
-            Storage::disk('public')->delete($product->image);
-        }
+        $this->deleteProductImage($product);
         
         $product->delete();
 
         return redirect()->route('products.index')->with('success', 'Producto eliminado correctamente.');
     }
 
+    /**
+     * Subir imagen a Cloudinary o storage local
+     */
+    private function uploadImage($file): array
+    {
+        // Intentar subir a Cloudinary si está configurado
+        if (CloudinaryService::isConfigured()) {
+            return $this->cloudinary->uploadImage($file, 'products');
+        }
+        
+        // Fallback a storage local
+        $path = $file->store('products', 'public');
+        return [
+            'url' => $path,
+            'public_id' => null,
+        ];
+    }
+
+    /**
+     * Eliminar imagen del producto (Cloudinary o local)
+     */
+    private function deleteProductImage(Product $product): void
+    {
+        if (!$product->image) {
+            return;
+        }
+
+        // Si tiene public_id de Cloudinary, eliminar de Cloudinary
+        if ($product->cloudinary_public_id) {
+            $this->cloudinary->deleteImage($product->cloudinary_public_id);
+        }
+        // Si es imagen local (no empieza con http), eliminar del storage
+        elseif (!str_starts_with($product->image, 'http')) {
+            Storage::disk('public')->delete($product->image);
+        }
+    }
 }
