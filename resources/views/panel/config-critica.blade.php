@@ -317,6 +317,13 @@
                     <label class="text-sm font-semibold text-slate-600">📧 Email</label>
                     <input type="email" name="gerente_email" value="{{ old('gerente_email') }}"
                            class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" required>
+                    <button type="submit"
+                            formaction="{{ route('panel.config.critica.gerente.send-code') }}"
+                            formnovalidate
+                            class="mt-2 px-3 py-2 rounded-xl bg-sky-600 text-white text-sm font-bold hover:bg-sky-700 transition">
+                        Verificar correo
+                    </button>
+                    <p class="text-xs text-slate-500 mt-1">Se enviará un código al correo capturado</p>
                     @error('gerente_email') <p class="text-sm text-rose-600 mt-1">{{ $message }}</p> @enderror
                 </div>
 
@@ -325,7 +332,13 @@
                     <input type="text" name="gerente_phone" value="{{ old('gerente_phone') }}"
                            class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" required
                            placeholder="Ej. 6671234567">
-                    <p class="text-xs text-slate-500 mt-1">Aquí llegará la alerta por WhatsApp</p>
+                    <button type="submit"
+                            formaction="{{ route('panel.config.critica.gerente.send-phone-code') }}"
+                            formnovalidate
+                            class="mt-2 px-3 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition">
+                        Verificar WhatsApp
+                    </button>
+                    <p class="text-xs text-slate-500 mt-1">Se enviará un código al número capturado por WhatsApp</p>
                     @error('gerente_phone') <p class="text-sm text-rose-600 mt-1">{{ $message }}</p> @enderror
                 </div>
 
@@ -344,28 +357,31 @@
                 </div>
 
                 <div>
-                    <label class="text-sm font-semibold text-slate-600">🔢 Código de verificación</label>
-                    <input type="text" name="gerente_verification_code" value="{{ old('gerente_verification_code') }}"
+                    <label class="text-sm font-semibold text-slate-600">🔢 Código de correo</label>
+                    <input type="text" name="gerente_email_verification_code" value="{{ old('gerente_email_verification_code') }}"
                            class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" required
                            placeholder="Código de 6 dígitos">
-                    <p class="text-xs text-slate-500 mt-1">Primero envía el código al correo del gerente</p>
-                    @error('gerente_verification_code') <p class="text-sm text-rose-600 mt-1">{{ $message }}</p> @enderror
+                    <p class="text-xs text-slate-500 mt-1">Código recibido por correo</p>
+                    @error('gerente_email_verification_code') <p class="text-sm text-rose-600 mt-1">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
+                    <label class="text-sm font-semibold text-slate-600">🔢 Código de WhatsApp</label>
+                    <input type="text" name="gerente_phone_verification_code" value="{{ old('gerente_phone_verification_code') }}"
+                           class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" required
+                           placeholder="Código de 6 dígitos">
+                    <p class="text-xs text-slate-500 mt-1">Código recibido por WhatsApp</p>
+                    @error('gerente_phone_verification_code') <p class="text-sm text-rose-600 mt-1">{{ $message }}</p> @enderror
                 </div>
             </div>
 
             <div class="mt-4 flex flex-col sm:flex-row gap-3">
                 <button type="submit"
-                        formaction="{{ route('panel.config.critica.gerente.send-code') }}"
-                        formnovalidate
-                        class="px-5 py-2 rounded-xl bg-sky-600 text-white font-bold hover:bg-sky-700 transition">
-                    📧 Enviar código al correo
-                </button>
-                <button type="submit"
                         class="px-5 py-2 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition">
                     ➕ Crear gerente
                 </button>
             </div>
-            <p class="text-xs text-slate-500 mt-2">El correo se marca como verificado solo si capturas correctamente el código enviado.</p>
+            <p class="text-xs text-slate-500 mt-2">El gerente solo se crea si validas correctamente el correo y el WhatsApp. Ese correo y número quedarán guardados para alertas de compras grandes.</p>
         </form>
     </div>
     @endif
