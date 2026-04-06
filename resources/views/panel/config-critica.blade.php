@@ -187,17 +187,31 @@
                 </button>
             </form>
 
-            {{-- Limpiar logs antiguos --}}
-            <form method="POST" action="{{ route('panel.config.critica.clean-logs') }}" 
-                  onsubmit="return confirm('¿Eliminar registros de auditoría con más de 90 días?')" class="block">
-                @csrf
-                <input type="hidden" name="days" value="90">
-                <button type="submit" class="w-full p-4 rounded-xl border-2 border-dashed border-slate-300 hover:border-amber-400 hover:bg-amber-50 transition text-center">
-                    <span class="text-2xl block mb-1">🗑️</span>
-                    <span class="font-bold text-slate-600">Limpiar Logs</span>
-                    <span class="text-xs text-slate-400 block">Más de 90 días</span>
-                </button>
-            </form>
+            {{-- Ver logs del sistema --}}
+            <a href="{{ route('panel.config.critica.logs') }}" class="block">
+                <div class="w-full p-4 rounded-xl border-2 border-dashed border-slate-300 hover:border-violet-400 hover:bg-violet-50 transition text-center">
+                    <span class="text-2xl block mb-1">📄</span>
+                    <span class="font-bold text-slate-600">Ver Logs</span>
+                    <span class="text-xs text-slate-400 block">Errores y eventos de Laravel</span>
+                </div>
+            </a>
+        </div>
+
+        <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h3 class="text-sm font-bold text-amber-900">Mantenimiento de bitácora</h3>
+                    <p class="text-xs text-amber-800">Recomendado solo después de revisar los logs. Esta acción elimina registros de auditoría antiguos, no corrige errores del sistema.</p>
+                </div>
+                <form method="POST" action="{{ route('panel.config.critica.clean-logs') }}"
+                      onsubmit="return confirm('¿Eliminar registros de auditoría con más de 90 días? Esta acción no se puede deshacer.')">
+                    @csrf
+                    <input type="hidden" name="days" value="90">
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-amber-600 text-white font-bold hover:bg-amber-700 transition">
+                        Limpiar bitácora antigua
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 

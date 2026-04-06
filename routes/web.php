@@ -174,6 +174,8 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
         ->name('panel.config.critica.gerente.store');
     Route::post('/panel/config-critica/clear-cache', [\App\Http\Controllers\CriticalSettingsController::class, 'clearCache'])
         ->name('panel.config.critica.clear-cache');
+    Route::get('/panel/config-critica/logs', [\App\Http\Controllers\CriticalSettingsController::class, 'viewLogs'])
+        ->name('panel.config.critica.logs');
     Route::post('/panel/config-critica/clean-logs', [\App\Http\Controllers\CriticalSettingsController::class, 'cleanOldLogs'])
         ->name('panel.config.critica.clean-logs');
     Route::post('/panel/config-critica/test-connections', [\App\Http\Controllers\CriticalSettingsController::class, 'testConnections'])

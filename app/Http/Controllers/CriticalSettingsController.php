@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules;
 use App\Services\CloudinaryService;
@@ -69,6 +70,10 @@ class CriticalSettingsController extends Controller
         // Obtener lista de backups
         $backups = $this->getBackupsList();
 
+        $storagePublicExists = is_dir(storage_path('app/public'));
+        $publicStorageExposed = is_link(public_path('storage')) || is_dir(public_path('storage'));
+        $storageReady = $storagePublicExists && $publicStorageExposed;
+
         $systemConnections = [
             [
                 'key' => 'database',
@@ -102,8 +107,10 @@ class CriticalSettingsController extends Controller
                 'key' => 'public_storage',
                 'label' => 'Storage público',
                 'type' => 'Filesystem',
-                'configured' => is_dir(storage_path('app/public')),
-                'details' => is_link(public_path('storage')) || is_dir(public_path('storage')) ? 'Link o carpeta disponible' : 'Sin enlace público',
+                'configured' => $storageReady,
+                'details' => $storageReady
+                    ? 'Listo para servir archivos públicos'
+                    : ($storagePublicExists ? 'Existe storage/app/public pero falta exponer public/storage' : 'Falta storage/app/public y public/storage'),
             ],
         ];
 
@@ -168,6 +175,50 @@ class CriticalSettingsController extends Controller
         } catch (\Exception $e) {
             return back()->with('error_tools', 'Error al limpiar logs: ' . $e->getMessage());
         }
+    }
+
+    public function viewLogs(Request $request)
+    {
+        $lines = (int) $request->integer('lines', 200);
+        $lines = max(50, min($lines, 1000));
+
+        $logPath = storage_path('logs/laravel.log');
+        $exists = File::exists($logPath);
+        $logLines = $exists ? $this->tailLogFile($logPath, $lines) : [];
+
+        $logInfo = [
+            'exists' => $exists,
+            'path' => $logPath,
+            'size' => $exists ? $this->formatBytes((int) File::size($logPath)) : '0 B',
+            'updated_at' => $exists ? date('d/m/Y H:i:s', File::lastModified($logPath)) : null,
+            'line_count' => count($logLines),
+            'requested_lines' => $lines,
+        ];
+
+        return view('panel.system-logs', compact('logLines', 'logInfo'));
+    }
+
+    private function tailLogFile(string $path, int $lines): array
+    {
+        $file = new \SplFileObject($path, 'r');
+        $file->seek(PHP_INT_MAX);
+        $lastLine = $file->key();
+        $startLine = max(0, $lastLine - $lines);
+        $result = [];
+
+        $file->seek($startLine);
+
+        while (! $file->eof()) {
+            $line = rtrim((string) $file->current(), "\r\n");
+
+            if ($line !== '') {
+                $result[] = $line;
+            }
+
+            $file->next();
+        }
+
+        return $result;
     }
 
     public function testConnections()
