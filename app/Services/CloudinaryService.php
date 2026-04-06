@@ -2,46 +2,48 @@
 
 namespace App\Services;
 
-use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
+use Cloudinary\Cloudinary;
+use Cloudinary\Configuration\Configuration;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 
 class CloudinaryService
 {
+    private ?Cloudinary $cloudinary = null;
+    
+    public function __construct()
+    {
+        $cloudUrl = env('CLOUDINARY_URL');
+        if (!empty($cloudUrl) && str_contains($cloudUrl, '@')) {
+            $this->cloudinary = new Cloudinary($cloudUrl);
+        }
+    }
+    
     /**
      * Subir imagen a Cloudinary
      */
     public function uploadImage(UploadedFile $file, string $folder = 'products'): array
     {
+        if (!$this->cloudinary) {
+            throw new \Exception('Cloudinary no está configurado');
+        }
+        
         Log::info('CloudinaryService: Starting upload to folder: ' . $folder);
         
-        $result = Cloudinary::upload($file->getRealPath(), [
+        $result = $this->cloudinary->uploadApi()->upload($file->getRealPath(), [
             'folder' => $folder,
         ]);
 
-        // Obtener los datos de la respuesta
-        $response = $result->getResponse();
-        
-        Log::info('CloudinaryService: Raw response', [
-            'response_type' => gettype($response),
-            'response' => $response,
+        Log::info('CloudinaryService: Upload result', [
+            'type' => gettype($result),
+            'keys' => is_array($result) ? array_keys($result) : 'not array',
         ]);
 
-        // La respuesta puede ser un array o un objeto
-        if (is_array($response)) {
-            $publicId = $response['public_id'] ?? null;
-            $url = $response['secure_url'] ?? $response['url'] ?? null;
-        } elseif (is_object($response)) {
-            $publicId = $response->public_id ?? null;
-            $url = $response->secure_url ?? $response->url ?? null;
-        } else {
-            // Intentar métodos del objeto result
-            $publicId = method_exists($result, 'getPublicId') ? $result->getPublicId() : null;
-            $url = method_exists($result, 'getSecurePath') ? $result->getSecurePath() : null;
-        }
+        $publicId = $result['public_id'] ?? null;
+        $url = $result['secure_url'] ?? $result['url'] ?? null;
         
         if (empty($url)) {
-            Log::error('CloudinaryService: No URL returned from upload');
+            Log::error('CloudinaryService: No URL in result', ['result' => $result]);
             throw new \Exception('Cloudinary no devolvió URL de imagen');
         }
         
@@ -61,12 +63,12 @@ class CloudinaryService
      */
     public function deleteImage(?string $publicId): bool
     {
-        if (!$publicId) {
+        if (!$publicId || !$this->cloudinary) {
             return false;
         }
 
         try {
-            Cloudinary::destroy($publicId);
+            $this->cloudinary->uploadApi()->destroy($publicId);
             return true;
         } catch (\Exception $e) {
             Log::error('CloudinaryService: Delete error - ' . $e->getMessage());
@@ -79,13 +81,10 @@ class CloudinaryService
      */
     public static function isConfigured(): bool
     {
-        // Intentar obtener de config primero, luego de env directamente
-        $cloudUrl = config('cloudinary.cloud_url') ?: env('CLOUDINARY_URL');
+        $cloudUrl = env('CLOUDINARY_URL');
         
-        $isConfigured = !empty($cloudUrl) 
+        return !empty($cloudUrl) 
             && $cloudUrl !== 'cloudinary://:@'
             && str_contains($cloudUrl, '@');
-        
-        return $isConfigured;
     }
 }
