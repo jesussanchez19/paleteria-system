@@ -71,17 +71,41 @@
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
     <section class="lg:col-span-2">
+        {{-- Buscador de productos --}}
+        <div class="mb-4">
+            <div class="relative">
+                <input 
+                    type="text" 
+                    id="product-search" 
+                    placeholder="🔍 Buscar producto por nombre..." 
+                    class="w-full px-4 py-3 pl-12 border border-slate-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+                    onkeyup="filterProducts()"
+                >
+                <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                <button type="button" onclick="clearSearch()" id="clear-search-btn" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 hidden">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <p id="search-results-count" class="text-sm text-slate-500 mt-2 hidden"></p>
+        </div>
+
         @if($products->isEmpty())
             <div class="bg-white border border-slate-200 rounded-2xl p-6">
                 <p class="font-semibold">No hay productos con stock.</p>
                 <p class="text-sm text-slate-600">Agrega stock para vender.</p>
             </div>
         @else
-            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div id="products-grid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 @foreach($products as $p)
                     <button
                         type="button"
-                        class="text-left bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow transition"
+                        class="product-card text-left bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow transition"
+                        data-name="{{ strtolower($p->name) }}"
+                        data-category="{{ strtolower($p->category ?? '') }}"
                         onclick="addToCart({{ $p->id }}, @js($p->name), {{ (float)$p->price }}, {{ (int)$p->stock }})"
                     >
                         <div class="flex items-start justify-between gap-2">
@@ -495,6 +519,69 @@
     // Al cargar la página, asegurar que el botón de cobrar esté correctamente desactivado
     document.addEventListener('DOMContentLoaded', function() {
         renderCart();
+    });
+
+    // =============================================
+    // BUSCADOR DE PRODUCTOS
+    // =============================================
+    function filterProducts() {
+        const searchInput = document.getElementById('product-search');
+        const filter = searchInput.value.toLowerCase().trim();
+        const products = document.querySelectorAll('.product-card');
+        const clearBtn = document.getElementById('clear-search-btn');
+        const resultsCount = document.getElementById('search-results-count');
+        
+        // Mostrar/ocultar botón de limpiar
+        if (filter.length > 0) {
+            clearBtn.classList.remove('hidden');
+        } else {
+            clearBtn.classList.add('hidden');
+        }
+        
+        let visibleCount = 0;
+        
+        products.forEach(function(product) {
+            const name = product.getAttribute('data-name') || '';
+            const category = product.getAttribute('data-category') || '';
+            
+            if (name.includes(filter) || category.includes(filter)) {
+                product.style.display = '';
+                visibleCount++;
+            } else {
+                product.style.display = 'none';
+            }
+        });
+        
+        // Mostrar contador de resultados
+        if (filter.length > 0) {
+            resultsCount.classList.remove('hidden');
+            if (visibleCount === 0) {
+                resultsCount.innerHTML = `<span class="text-rose-500">No se encontraron productos para "<b>${filter}</b>"</span>`;
+            } else {
+                resultsCount.innerHTML = `Se encontraron <b>${visibleCount}</b> producto${visibleCount !== 1 ? 's' : ''} para "<b>${filter}</b>"`;
+            }
+        } else {
+            resultsCount.classList.add('hidden');
+        }
+    }
+    
+    function clearSearch() {
+        const searchInput = document.getElementById('product-search');
+        searchInput.value = '';
+        filterProducts();
+        searchInput.focus();
+    }
+    
+    // Atajo de teclado: Ctrl+F o / para enfocar búsqueda
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey && e.key === 'f') || (e.key === '/' && document.activeElement.tagName !== 'INPUT')) {
+            e.preventDefault();
+            document.getElementById('product-search').focus();
+        }
+        // Escape para limpiar búsqueda
+        if (e.key === 'Escape' && document.activeElement.id === 'product-search') {
+            clearSearch();
+        }
     });
 </script>
 @endsection
