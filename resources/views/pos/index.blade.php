@@ -38,20 +38,11 @@
                         Esperado: <b class="text-emerald-600">${{ number_format($expectedAmount, 2) }}</b>
                     </span>
                 </div>
-                @if($canCloseCash)
-                <form method="POST" action="{{ route('caja.cerrar') }}" onsubmit="return confirm('¿Cerrar caja? Después podrás registrar el dinero real en la sección de Caja.')">
-                    @csrf
-                    <button type="submit" class="px-4 py-2 rounded-xl bg-rose-500 text-white font-bold hover:bg-rose-600 transition text-sm">
-                        Cerrar caja
-                    </button>
-                </form>
-                @else
                 <div class="flex items-center gap-2">
                     <span class="text-sm text-slate-500">
-                        🔒 Cerrar en {{ number_format($hoursRemaining, 1) }}h
+                        🕐 Cierre automático: <b>{{ $businessHours['close_time'] }}</b>
                     </span>
                 </div>
-                @endif
             @else
                 {{-- Caja cerrada --}}
                 <div class="flex items-center gap-3">
@@ -59,8 +50,20 @@
                         <span class="w-2 h-2 bg-slate-400 rounded-full"></span>
                         Caja cerrada
                     </span>
-                    <span class="text-sm text-slate-500">Horario: Lunes a Domingo de 8:30am a 5:00pm</span>
+                    <span class="text-sm text-slate-500">
+                        Horario: <b>{{ $businessHours['open_time'] }}</b> a <b>{{ $businessHours['close_time'] }}</b>
+                        @if(!$businessHours['is_open'])
+                            <span class="text-rose-500 ml-2">(Fuera de horario)</span>
+                        @endif
+                    </span>
                 </div>
+                @if($businessHours['is_open'])
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-amber-600">
+                        ⏳ Abriendo automáticamente...
+                    </span>
+                </div>
+                @endif
             @endif
         </div>
     </div>

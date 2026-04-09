@@ -16,8 +16,9 @@ class PosController extends Controller
             ->orderBy('name')
             ->get();
 
-        // Obtener estado de caja
-        $openRegister = CashRegister::getOpenRegister();
+        // Sincronizar caja con horario laboral (abre/cierra automáticamente)
+        $openRegister = CashRegister::syncWithBusinessHours();
+        
         $salesDuringShift = 0;
         $expectedAmount = 0;
         
@@ -39,7 +40,10 @@ class PosController extends Controller
 
         // Verificar si las ventas están habilitadas
         $salesEnabled = app_setting('sales_enabled', '1') === '1';
+        
+        // Información del horario laboral
+        $businessHours = CashRegister::getBusinessHoursInfo();
 
-        return view('pos.index', compact('products', 'openRegister', 'salesDuringShift', 'expectedAmount', 'canCloseCash', 'hoursRemaining', 'salesEnabled'));
+        return view('pos.index', compact('products', 'openRegister', 'salesDuringShift', 'expectedAmount', 'canCloseCash', 'hoursRemaining', 'salesEnabled', 'businessHours'));
     }
 }

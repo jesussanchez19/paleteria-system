@@ -13,7 +13,8 @@ class CashRegisterController extends Controller
      */
     public function status()
     {
-        $openRegister = CashRegister::getOpenRegister();
+        // Sincronizar caja con horario laboral (abre/cierra automáticamente)
+        $openRegister = CashRegister::syncWithBusinessHours();
         
         $salesDuringShift = 0;
         $expectedAmount = 0;
@@ -23,11 +24,14 @@ class CashRegisterController extends Controller
             $expectedAmount = (float)$openRegister->opening_amount + $salesDuringShift;
         }
         
+        $businessHours = CashRegister::getBusinessHoursInfo();
+        
         return response()->json([
             'open' => $openRegister !== null,
             'register' => $openRegister,
             'sales_during_shift' => $salesDuringShift,
             'expected_amount' => $expectedAmount,
+            'business_hours' => $businessHours,
         ]);
     }
 

@@ -53,13 +53,22 @@ class CashRegister extends Model
     }
 
     /**
-     * Verificar si estamos en horario laboral (8am - 5pm)
+     * Verificar si estamos en horario laboral (configurable desde settings)
      */
     public static function isBusinessHours(): bool
     {
         $now = now();
-        $start = $now->copy()->setTime(8, 30, 0);
-        $end = $now->copy()->setTime(17, 0, 0);
+        
+        // Leer horario desde configuración o usar valores por defecto
+        $openTime = app_setting('business_open_time', '08:30');
+        $closeTime = app_setting('business_close_time', '17:00');
+        
+        // Parsear horarios
+        [$openHour, $openMin] = array_map('intval', explode(':', $openTime));
+        [$closeHour, $closeMin] = array_map('intval', explode(':', $closeTime));
+        
+        $start = $now->copy()->setTime($openHour, $openMin, 0);
+        $end = $now->copy()->setTime($closeHour, $closeMin, 0);
 
         return $now->between($start, $end);
     }
@@ -84,5 +93,71 @@ class CashRegister extends Model
         return static::whereNull('closed_at')
             ->latest()
             ->first();
+    }
+
+    /**
+     * Cerrar caja automáticamente (por horario)
+     */
+    public function autoClose(): void
+    {
+        // Calcular ventas del turno
+        $salesDuringShift = \App\Models\Sale::where('created_at', '>=', $this->opened_at)->sum('total');
+        $expected = (float)$this->opening_amount + $salesDuringShift;
+
+        $this->update([
+            'expected_amount' => $expected,
+            'closed_at' => now(),
+        ]);
+
+        audit_log('cash.auto_closed', 'caja', $this, [
+            'motivo' => 'Cierre automático por fin de horario laboral',
+            'esperado' => '$' . number_format($expected, 2),
+        ]);
+    }
+
+    /**
+     * Sincronizar estado de caja con horario laboral
+     * - Si estamos en horario y no hay caja → Abrir
+     * - Si estamos fuera de horario y hay caja abierta → Cerrar
+     */
+    public static function syncWithBusinessHours(): ?self
+    {
+        $openRegister = static::getAnyOpenRegister();
+        $isBusinessHours = static::isBusinessHours();
+
+        // Fuera de horario con caja abierta → Cerrar automáticamente
+        if (!$isBusinessHours && $openRegister) {
+            $openRegister->autoClose();
+            return null;
+        }
+
+        // En horario sin caja abierta → Abrir automáticamente
+        if ($isBusinessHours && !$openRegister) {
+            $userId = auth()->id() ?? 1; // Usuario actual o admin por defecto
+            $openRegister = static::openForUser($userId, 0);
+            
+            audit_log('cash.auto_opened', 'caja', $openRegister, [
+                'motivo' => 'Apertura automática por inicio de horario laboral',
+                'usuario' => auth()->user()?->name ?? 'Sistema',
+            ]);
+        }
+
+        return $openRegister;
+    }
+
+    /**
+     * Obtener información del horario laboral
+     */
+    public static function getBusinessHoursInfo(): array
+    {
+        $openTime = app_setting('business_open_time', '08:30');
+        $closeTime = app_setting('business_close_time', '17:00');
+        
+        return [
+            'open_time' => $openTime,
+            'close_time' => $closeTime,
+            'is_open' => static::isBusinessHours(),
+            'current_time' => now()->format('H:i'),
+        ];
     }
 }
