@@ -128,7 +128,7 @@
                         <span class="text-2xl">⏰</span>
                         <div>
                             <p class="text-amber-800 font-bold">Caja abierta</p>
-                            <p class="text-sm text-slate-600">El cierre automático es a las 5:00pm</p>
+                            <p class="text-sm text-slate-600">Cierre automático: <b>{{ $businessHours['close_time'] }}</b></p>
                         </div>
                     </div>
                 </div>

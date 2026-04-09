@@ -14,6 +14,12 @@ class CashRegisterReportController extends Controller
         $date = $request->get('date', now()->toDateString());
         $start = Carbon::parse($date)->startOfDay();
         $end   = Carbon::parse($date)->endOfDay();
+        
+        // Si es hoy, sincronizar caja con horario laboral (abre/cierra automáticamente)
+        $isToday = $date === now()->toDateString();
+        if ($isToday) {
+            CashRegister::syncWithBusinessHours();
+        }
 
         // Caja del día (si hubo más de una, tomamos la última)
         $cash = CashRegister::with('user')
@@ -50,8 +56,8 @@ class CashRegisterReportController extends Controller
             'turnos_con_sobrante' => CashRegister::whereNotNull('closed_at')->where('difference', '>', 0)->count(),
         ];
 
-        // Verificar si es fecha de hoy para mostrar formulario de corte
-        $isToday = $date === now()->toDateString();
+        // Información del horario laboral
+        $businessHours = CashRegister::getBusinessHoursInfo();
 
         return view('panel.caja', compact(
             'date', 
@@ -61,7 +67,8 @@ class CashRegisterReportController extends Controller
             'expectedInCash',
             'registers', 
             'stats',
-            'isToday'
+            'isToday',
+            'businessHours'
         ));
     }
 }
